@@ -1,4 +1,4 @@
-import { type ClientSchema, a, defineData } from "@aws-amplify/backend";
+import { type ClientSchema, a, defineData } from '@aws-amplify/backend';
 
 /*== STEP 1 ===============================================================
 The section below creates a Todo database table with a "content" field. Try
@@ -7,11 +7,17 @@ specifies that any user authenticated via an API key can "create", "read",
 "update", and "delete" any "Todo" records.
 =========================================================================*/
 const schema = a.schema({
-  Todo: a
+  UserProfile: a
     .model({
-      content: a.string(),
+      userId: a.id().required(), // This will be the Cognito User Sub
+      email: a.email().required(),
+      displayName: a.string(),
+      // Amplify automatically adds createdAt and updatedAt
     })
-    .authorization((allow) => [allow.publicApiKey()]),
+    .authorization((allow) => [
+      allow.ownerDefinedIn('userId').to(['read', 'update']),
+    ]),
+  // Define OnePager and SharedLink models here in later sprints
 });
 
 export type Schema = ClientSchema<typeof schema>;
@@ -19,10 +25,8 @@ export type Schema = ClientSchema<typeof schema>;
 export const data = defineData({
   schema,
   authorizationModes: {
-    defaultAuthorizationMode: "apiKey",
-    apiKeyAuthorizationMode: {
-      expiresInDays: 30,
-    },
+    defaultAuthorizationMode: 'userPool', // Changed from apiKey to userPool
+    // API key can be added as an additional auth mode if needed for public read access on specific models later
   },
 });
 

@@ -128,6 +128,35 @@
   --sidebar-ring: oklch(0.552 0.016 285.938);
 }
 
+/* Custom BlockNote Styles */
+.bn-headline {
+  /* Add any specific base styles for all headlines here */
+  /* Example: ensure it behaves like a block */
+  display: block;
+}
+
+.bn-headline-level-1 {
+  font-size: 2em; /* Example H1 size */
+  font-weight: bold;
+  margin-top: 0.67em;
+  margin-bottom: 0.67em;
+}
+
+.bn-headline-level-2 {
+  font-size: 1.5em; /* Example H2 size */
+  font-weight: bold;
+  margin-top: 0.83em;
+  margin-bottom: 0.83em;
+}
+
+.bn-headline-level-3 {
+  font-size: 1.17em; /* Example H3 size */
+  font-weight: bold;
+  margin-top: 1em;
+  margin-bottom: 1em;
+}
+
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
@@ -136,3 +165,41 @@
     @apply bg-background text-foreground;
   }
 }
+
+
+/* Base theme */
+/* BlockNote Custom Dark Theme to match app styles */
+.bn-container[data-theming-css-variables-demo][data-theme='dark'],
+.bn-container[data-theming-css-variables-demo][data-color-scheme="dark"] {
+  --bn-colors-editor-text: #FAFAFA; /* App's text color */
+  --bn-colors-editor-background: #09090B; /* App's background color */
+  
+  /* Menu and Tooltip colors - adjust as needed for visibility against dark background */
+  --bn-colors-menu-text: #FAFAFA;
+  --bn-colors-menu-background: #1E1E1E; /* Slightly lighter than editor background */
+  --bn-colors-tooltip-text: #FAFAFA;
+  --bn-colors-tooltip-background: #1E1E1E;
+  
+  /* Hovered and Selected states - adjust for good contrast */
+  --bn-colors-hovered-text: #FFFFFF;
+  --bn-colors-hovered-background: #2A2A2A;
+  --bn-colors-selected-text: #FFFFFF;
+  --bn-colors-selected-background: #3C3C3C;
+  
+  /* Disabled states */
+  --bn-colors-disabled-text: #A0A0A0;
+  --bn-colors-disabled-background: #18181B; /* Darker, less prominent */
+  
+  /* Other UI elements */
+  --bn-colors-shadow: #000000; /* Dark shadow for depth */
+  --bn-colors-border: #27272A; /* Subtle border, slightly lighter than bg */
+  --bn-colors-side-menu: #A0A0A0; /* For icons/text in side menu */
+  --bn-colors-highlight-text: var(--bn-colors-editor-text);
+  --bn-colors-highlight-background: #2A2A2A; /* Background for text highlights */
+
+  /* Keep these or adjust if necessary */
+  --bn-border-radius: 4px;
+  --bn-font-family: inherit; /* Inherit from body for consistency */
+}
+
+ 

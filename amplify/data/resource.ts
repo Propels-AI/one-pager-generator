@@ -17,7 +17,28 @@ const schema = a.schema({
     .authorization((allow) => [
       allow.ownerDefinedIn('userId').to(['read', 'update']),
     ]),
-  // Define OnePager and SharedLink models here in later sprints
+
+  OnePager: a
+    .model({
+      baseOnePagerId: a.string().required(),
+      itemSK: a.string().required().default("METADATA"),
+      ownerUserId: a.string().required(), // Links to Cognito user sub
+      statusUpdatedAt: a.string().required(), // Composite: STATUS#<status>#<updatedAtISOString>
+      internalTitle: a.string().required(),
+      status: a.string().required(), // e.g., 'DRAFT', 'PUBLISHED'
+      templateId: a.string().required(),
+      contentBlocks: a.json().required(), // For BlockNote content
+      // Amplify automatically adds createdAt and updatedAt
+    })
+    .identifier(['baseOnePagerId', 'itemSK']) // Custom primary key
+    .secondaryIndexes(index => [
+      index('ownerUserId').sortKeys(['statusUpdatedAt']).name('UserPagesIndex') // GSI1 - Corrected syntax
+    ])
+    .authorization((allow) => [
+      allow.ownerDefinedIn('ownerUserId').to(['create', 'read', 'update', 'delete']),
+      allow.publicApiKey().to(['read']) // Public read via API Key - Corrected syntax
+    ]),
+  // Define SharedLink model here in later sprints
 });
 
 export type Schema = ClientSchema<typeof schema>;
@@ -25,8 +46,10 @@ export type Schema = ClientSchema<typeof schema>;
 export const data = defineData({
   schema,
   authorizationModes: {
-    defaultAuthorizationMode: 'userPool', // Changed from apiKey to userPool
-    // API key can be added as an additional auth mode if needed for public read access on specific models later
+    defaultAuthorizationMode: 'userPool',
+    apiKeyAuthorizationMode: { // Added API Key auth mode for public access
+      expiresInDays: 30,
+    },
   },
 });
 

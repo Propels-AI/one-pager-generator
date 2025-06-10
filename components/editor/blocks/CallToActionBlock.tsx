@@ -15,7 +15,7 @@ const callToActionBlockPropsDefinition = {
 export const callToActionBlockConfig = {
   type: 'callToAction' as const,
   name: 'Call To Action',
-  content: 'inline' as const, // Main text for CTA
+  content: 'inline' as const,
   propSchema: callToActionBlockPropsDefinition,
   icon: MdAdsClick,
   placeholder: 'Enter compelling text for the call to action...',
@@ -28,84 +28,65 @@ export type CallToActionBlockRenderProps = ReactCustomBlockRenderProps<
 >;
 
 export const CallToActionBlockRenderComponent: React.FC<CallToActionBlockRenderProps> = (props) => {
-  const { buttonText, buttonURL, textColor: tcProp, backgroundColor: bgProp } = props.block.props;
-
-  let colorToDisplay = tcProp === 'default' ? 'inherit' : tcProp;
-  const bgColorToDisplay = bgProp === 'default' ? 'transparent' : bgProp;
-
-  const lightTextColors = [
-    'white',
-    '#fff',
-    '#ffffff',
-    'yellow',
-    'lightgray',
-    'lightyellow',
-    'lightcyan',
-    'lightpink',
-    '#fafafa',
-    '#f8f8f8',
-    '#f0f0f0',
-  ];
-  const problematicLightBackgrounds = [
-    'white',
-    '#fff',
-    '#ffffff',
-    'yellow',
-    'lightgray',
-    'lightyellow',
-    'beige',
-    '#fafafa',
-    '#f8f8f8',
-    '#f0f0f0',
-  ];
-  const darkTextColor = '#1E1E1E';
-
-  const tcPropLower = typeof tcProp === 'string' ? tcProp.toLowerCase() : 'default';
-  const bgPropLower = typeof bgProp === 'string' ? bgProp.toLowerCase() : 'default';
-
-  if (
-    (lightTextColors.includes(tcPropLower) || tcProp === 'default') &&
-    problematicLightBackgrounds.includes(bgPropLower)
-  ) {
-    colorToDisplay = darkTextColor;
-  }
+  const { buttonText, buttonURL } = props.block.props;
 
   const wrapperStyle: React.CSSProperties = {
-    padding: '20px',
-    border: '2px solid #28a745', // Default green border
-    margin: '10px 0',
-    textAlign: 'center',
-    backgroundColor: bgColorToDisplay,
-    color: colorToDisplay,
+    border: '1px solid #e0e0e0',
+    boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
+    padding: '24px',
+    margin: '16px 0',
+    borderRadius: '8px',
+    backgroundColor: '#ffffff',
+    position: 'relative',
+    textAlign: 'left',
   };
 
-  // If a specific background color is chosen for the block, adjust border for visibility if needed
-  if (bgProp !== 'default' && problematicLightBackgrounds.includes(bgPropLower)) {
-    wrapperStyle.borderColor = '#adb5bd'; // A neutral grey border for light backgrounds
-  } else if (bgProp !== 'default') {
-    // Potentially adjust border based on dark backgrounds too, if needed
-  }
+  const labelStyle: React.CSSProperties = {
+    position: 'absolute',
+    top: '8px',
+    right: '12px',
+    fontSize: '0.75rem',
+    color: '#757575',
+    fontWeight: '500',
+    padding: '2px 6px',
+    backgroundColor: '#f5f5f5',
+    borderRadius: '4px',
+  };
 
   return (
     <div data-cta-block style={wrapperStyle}>
-      <div ref={props.contentRef} className="bn-inline-content" style={{ marginBottom: '15px', fontSize: '1.1em' }} />
-      <a
-        href={buttonURL}
-        onClick={(e) => {
-          if (props.editor.isEditable) e.preventDefault();
-        }} // Prevent navigation in editor
+      <div style={labelStyle}>Call to Action Section</div>
+      <div
+        ref={props.contentRef}
+        className="bn-inline-content"
         style={{
-          display: 'inline-block',
-          padding: '10px 20px',
-          backgroundColor: '#28a745', // Button color remains fixed for now
-          color: 'white', // Button text color remains fixed for now
-          textDecoration: 'none',
-          borderRadius: '5px',
-          fontWeight: 'bold',
+          marginBottom: '20px',
+          fontSize: '1rem',
+          lineHeight: '1.6',
         }}
-      >
-        {buttonText}
-      </a>
+      />
+      <div style={{ textAlign: 'center' }}>
+        <a
+          href={buttonURL}
+          onClick={(e) => {
+            if (props.editor.isEditable) e.preventDefault();
+          }}
+          style={{
+            display: 'inline-block',
+            padding: '10px 24px',
+            backgroundColor: '#007bff',
+            color: 'white',
+            textDecoration: 'none',
+            borderRadius: '6px',
+            fontWeight: 'bold',
+            transition: 'background-color 0.2s ease-in-out',
+          }}
+          onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#0056b3')}
+          onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = '#007bff')}
+        >
+          {buttonText}
+        </a>
+      </div>
     </div>
   );
 };

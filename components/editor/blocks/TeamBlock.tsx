@@ -7,6 +7,7 @@ import { MdGroup } from 'react-icons/md';
 
 const teamBlockPropsDefinition = {
   ...defaultProps,
+  name: { default: 'Team Member Section' as string },
 };
 
 export const teamBlockConfig = {
@@ -25,80 +26,56 @@ export type TeamBlockRenderProps = ReactCustomBlockRenderProps<
 >;
 
 export const TeamBlockRenderComponent: React.FC<TeamBlockRenderProps> = (props) => {
-  const { textColor: tcProp, backgroundColor: bgProp } = props.block.props;
-
-  let colorToDisplay = tcProp === 'default' ? 'inherit' : tcProp;
-  const bgColorToDisplay = bgProp === 'default' ? 'transparent' : bgProp;
-
-  const lightTextColors = [
-    'white',
-    '#fff',
-    '#ffffff',
-    'yellow',
-    'lightgray',
-    'lightyellow',
-    'lightcyan',
-    'lightpink',
-    '#fafafa',
-    '#f8f8f8',
-    '#f0f0f0',
-  ];
-  const problematicLightBackgrounds = [
-    'white',
-    '#fff',
-    '#ffffff',
-    'yellow',
-    'lightgray',
-    'lightyellow',
-    'beige',
-    '#fafafa',
-    '#f8f8f8',
-    '#f0f0f0',
-  ];
-  const darkTextColor = '#1E1E1E';
-
-  const tcPropLower = typeof tcProp === 'string' ? tcProp.toLowerCase() : 'default';
-  const bgPropLower = typeof bgProp === 'string' ? bgProp.toLowerCase() : 'default';
-
-  if (
-    (lightTextColors.includes(tcPropLower) || tcProp === 'default') &&
-    problematicLightBackgrounds.includes(bgPropLower)
-  ) {
-    colorToDisplay = darkTextColor;
-  }
+  // Removed dynamic color logic
 
   const wrapperStyle: React.CSSProperties = {
-    padding: '10px',
-    border: '1px dashed #ffc107',
-    margin: '10px 0',
-    backgroundColor: bgColorToDisplay,
-    color: colorToDisplay,
+    border: '1px solid #e0e0e0',
+    boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
+    padding: '24px',
+    margin: '16px 0',
+    borderRadius: '8px',
+    backgroundColor: '#ffffff',
+    position: 'relative',
+    textAlign: 'left',
+  };
+
+  const labelStyle: React.CSSProperties = {
+    position: 'absolute',
+    top: '8px',
+    right: '12px',
+    fontSize: '0.75rem',
+    color: '#757575',
+    fontWeight: '500',
+    padding: '2px 6px',
+    backgroundColor: '#f5f5f5',
+    borderRadius: '4px',
   };
 
   const titleStyle: React.CSSProperties = {
     marginTop: 0,
-    marginBottom: '5px',
+    marginBottom: '12px',
     display: 'flex',
     alignItems: 'center',
-    color: colorToDisplay !== 'inherit' && colorToDisplay !== darkTextColor ? colorToDisplay : '#b38600', // Default amber title
+    fontSize: '1.125rem',
+    fontWeight: '600',
+    color: '#333',
   };
-
-  if (
-    colorToDisplay === darkTextColor &&
-    (bgColorToDisplay === 'transparent' || problematicLightBackgrounds.includes(bgPropLower))
-  ) {
-    titleStyle.color = darkTextColor;
-  } else if (colorToDisplay !== 'inherit') {
-    titleStyle.color = colorToDisplay;
-  }
 
   return (
     <div data-team-block style={wrapperStyle}>
+      <div style={labelStyle}>Team Section</div>
       <h4 style={titleStyle}>
-        <MdGroup style={{ marginRight: '8px' }} /> Team Member / Section
+        <MdGroup style={{ marginRight: '10px', fontSize: '1.3em' }} /> {props.block.props.name || 'Team Member / Section'}
       </h4>
-      <div ref={props.contentRef} className="bn-inline-content" />
-      {/* Placeholder for image, name, title inputs */}
+      <div 
+        ref={props.contentRef} 
+        className="bn-inline-content" 
+        style={{ 
+          fontSize: '1rem', 
+          lineHeight: '1.6' 
+        }}
+      />
+      {/* Placeholder for image, name, title inputs can be developed here */}
     </div>
   );
 };

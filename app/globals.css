@@ -156,6 +156,13 @@
   margin-bottom: 1em;
 }
 
+.bn-inline-content a {
+  color: #1a73e8;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+
 
 @layer base {
   * {
@@ -166,6 +173,35 @@
   }
 }
 
+
+/* BlockNote Custom Light Theme to match app styles */
+.bn-container[data-theming-css-variables-demo][data-theme='light'],
+.bn-container[data-theming-css-variables-demo][data-color-scheme="light"] {
+  --bn-colors-editor-text: oklch(0.141 0.005 285.823); /* :root --foreground */
+  --bn-colors-editor-background: oklch(1 0 0); /* :root --background */
+  
+  --bn-colors-menu-text: oklch(0.141 0.005 285.823);
+  --bn-colors-menu-background: oklch(0.985 0 0); /* :root --sidebar or a light card color */
+  --bn-colors-tooltip-text: oklch(0.141 0.005 285.823);
+  --bn-colors-tooltip-background: oklch(0.985 0 0);
+  
+  --bn-colors-hovered-text: oklch(0.141 0.005 285.823);
+  --bn-colors-hovered-background: oklch(0.967 0.001 286.375); /* :root --secondary or --accent */
+  --bn-colors-selected-text: oklch(0.141 0.005 285.823);
+  --bn-colors-selected-background: oklch(0.92 0.004 286.32); /* :root --border or a slightly darker accent */
+  
+  --bn-colors-disabled-text: oklch(0.552 0.016 285.938); /* :root --muted-foreground */
+  --bn-colors-disabled-background: oklch(0.967 0.001 286.375); /* :root --muted */
+  
+  --bn-colors-shadow: rgba(0, 0, 0, 0.1); /* Lighter shadow for light theme */
+  --bn-colors-border: oklch(0.92 0.004 286.32); /* :root --border */
+  --bn-colors-side-menu: oklch(0.552 0.016 285.938);
+  --bn-colors-highlight-text: var(--bn-colors-editor-text);
+  --bn-colors-highlight-background: oklch(0.92 0.004 286.32); /* A light accent for highlights */
+
+  --bn-border-radius: 4px;
+  --bn-font-family: inherit; /* Use app's font */
+}
 
 /* Base theme */
 /* BlockNote Custom Dark Theme to match app styles */

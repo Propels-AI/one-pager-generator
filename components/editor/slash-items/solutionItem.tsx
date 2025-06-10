@@ -11,7 +11,10 @@ export const insertSolutionItem = (editor: CustomSchemaEditor): DefaultReactSugg
       props: {},
       content: [{ type: 'text', text: 'Explain the solution here...', styles: {} }],
     };
-    editor.insertBlocks([solutionBlock], editor.getTextCursorPosition().block, 'after');
+    const insertedBlocks = editor.insertBlocks([solutionBlock], editor.getTextCursorPosition().block, 'after');
+    if (insertedBlocks.length > 0) {
+      editor.setTextCursorPosition(insertedBlocks[0].id, 'end');
+    }
   },
   aliases: ['solution', 'remedy', 'fix'],
   group: 'Custom Page Sections',

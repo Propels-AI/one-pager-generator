@@ -7,6 +7,7 @@ import { MdPhotoLibrary } from 'react-icons/md';
 
 const galleryBlockPropsDefinition = {
   ...defaultProps,
+  name: { default: 'Gallery Section' as string },
   // imageURLs: { default: [] as string[] } // Example for later
 };
 
@@ -26,80 +27,61 @@ export type GalleryBlockRenderProps = ReactCustomBlockRenderProps<
 >;
 
 export const GalleryBlockRenderComponent: React.FC<GalleryBlockRenderProps> = (props) => {
-  const { textColor: tcProp, backgroundColor: bgProp } = props.block.props;
-
-  let colorToDisplay = tcProp === 'default' ? 'inherit' : tcProp;
-  const bgColorToDisplay = bgProp === 'default' ? 'transparent' : bgProp;
-
-  const lightTextColors = [
-    'white',
-    '#fff',
-    '#ffffff',
-    'yellow',
-    'lightgray',
-    'lightyellow',
-    'lightcyan',
-    'lightpink',
-    '#fafafa',
-    '#f8f8f8',
-    '#f0f0f0',
-  ];
-  const problematicLightBackgrounds = [
-    'white',
-    '#fff',
-    '#ffffff',
-    'yellow',
-    'lightgray',
-    'lightyellow',
-    'beige',
-    '#fafafa',
-    '#f8f8f8',
-    '#f0f0f0',
-  ];
-  const darkTextColor = '#1E1E1E';
-
-  const tcPropLower = typeof tcProp === 'string' ? tcProp.toLowerCase() : 'default';
-  const bgPropLower = typeof bgProp === 'string' ? bgProp.toLowerCase() : 'default';
-
-  if (
-    (lightTextColors.includes(tcPropLower) || tcProp === 'default') &&
-    problematicLightBackgrounds.includes(bgPropLower)
-  ) {
-    colorToDisplay = darkTextColor;
-  }
-
   const wrapperStyle: React.CSSProperties = {
-    padding: '10px',
-    border: '1px dashed #dc3545', // Default red border
-    margin: '10px 0',
-    backgroundColor: bgColorToDisplay,
-    color: colorToDisplay, // Placeholder text will use this color
+    border: '1px solid #e0e0e0',
+    boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
+    padding: '24px',
+    margin: '16px 0',
+    borderRadius: '8px',
+    backgroundColor: '#ffffff',
+    position: 'relative',
+    textAlign: 'left',
+  };
+
+  const labelStyle: React.CSSProperties = {
+    position: 'absolute',
+    top: '8px',
+    right: '12px',
+    fontSize: '0.75rem',
+    color: '#757575',
+    fontWeight: '500',
+    padding: '2px 6px',
+    backgroundColor: '#f5f5f5',
+    borderRadius: '4px',
   };
 
   const titleStyle: React.CSSProperties = {
     marginTop: 0,
-    marginBottom: '5px',
+    marginBottom: '12px',
     display: 'flex',
     alignItems: 'center',
-    color: colorToDisplay !== 'inherit' && colorToDisplay !== darkTextColor ? colorToDisplay : '#a71d2a', // Default red title
+    fontSize: '1.125rem',
+    fontWeight: '600',
+    color: '#333',
   };
 
-  if (
-    colorToDisplay === darkTextColor &&
-    (bgColorToDisplay === 'transparent' || problematicLightBackgrounds.includes(bgPropLower))
-  ) {
-    titleStyle.color = darkTextColor;
-  } else if (colorToDisplay !== 'inherit') {
-    titleStyle.color = colorToDisplay;
-  }
+  const galleryContentPlaceholderStyle: React.CSSProperties = {
+    padding: '20px',
+    border: '1px dashed #ccc',
+    borderRadius: '6px',
+    minHeight: '100px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    textAlign: 'center',
+    color: '#777',
+    fontSize: '0.9rem',
+    backgroundColor: '#fafafa',
+  };
 
   return (
     <div data-gallery-block style={wrapperStyle}>
+      <div style={labelStyle}>Gallery Section</div>
       <h4 style={titleStyle}>
-        <MdPhotoLibrary style={{ marginRight: '8px' }} /> Image Gallery
+        <MdPhotoLibrary style={{ marginRight: '10px', fontSize: '1.3em' }} />{' '}
+        {props.block.props.name || 'Image Gallery'}
       </h4>
-      {/* Placeholder for image display and upload UI */}
-      <p>Gallery content will be managed here. Add images via block settings.</p>
+      <div style={galleryContentPlaceholderStyle}>Gallery images and management UI will appear here.</div>
     </div>
   );
 };

@@ -11,7 +11,10 @@ export const insertTeamItem = (editor: CustomSchemaEditor): DefaultReactSuggesti
       props: {},
       content: [{ type: 'text', text: 'Team member bio or description...', styles: {} }],
     };
-    editor.insertBlocks([teamBlock], editor.getTextCursorPosition().block, 'after');
+    const insertedBlocks = editor.insertBlocks([teamBlock], editor.getTextCursorPosition().block, 'after');
+    if (insertedBlocks.length > 0) {
+      editor.setTextCursorPosition(insertedBlocks[0].id, 'end');
+    }
   },
   aliases: ['team', 'member', 'people'],
   group: 'Custom Page Sections',

@@ -5,5 +5,6 @@ export * from './galleryItem';
 export * from './pricingItem';
 export * from './problemSectionItem';
 export * from './solutionItem';
+export * from './socialItem';
 export * from './teamItem';
 export * from './testimonialItem';

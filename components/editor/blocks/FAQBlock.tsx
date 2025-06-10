@@ -24,79 +24,65 @@ export const faqBlockConfig = {
 export type FAQBlockRenderProps = ReactCustomBlockRenderProps<typeof faqBlockConfig, InlineContentSchema, StyleSchema>;
 
 export const FAQBlockRenderComponent: React.FC<FAQBlockRenderProps> = (props) => {
-  const { question, textColor: tcProp, backgroundColor: bgProp } = props.block.props;
-
-  let colorToDisplay = tcProp === 'default' ? 'inherit' : tcProp;
-  const bgColorToDisplay = bgProp === 'default' ? 'transparent' : bgProp;
-
-  const lightTextColors = [
-    'white',
-    '#fff',
-    '#ffffff',
-    'yellow',
-    'lightgray',
-    'lightyellow',
-    'lightcyan',
-    'lightpink',
-    '#fafafa',
-    '#f8f8f8',
-    '#f0f0f0',
-  ];
-  const problematicLightBackgrounds = [
-    'white',
-    '#fff',
-    '#ffffff',
-    'yellow',
-    'lightgray',
-    'lightyellow',
-    'beige',
-    '#fafafa',
-    '#f8f8f8',
-    '#f0f0f0',
-  ];
-  const darkTextColor = '#1E1E1E';
-
-  const tcPropLower = typeof tcProp === 'string' ? tcProp.toLowerCase() : 'default';
-  const bgPropLower = typeof bgProp === 'string' ? bgProp.toLowerCase() : 'default';
-
-  if (
-    (lightTextColors.includes(tcPropLower) || tcProp === 'default') &&
-    problematicLightBackgrounds.includes(bgPropLower)
-  ) {
-    colorToDisplay = darkTextColor;
-  }
+  const { question } = props.block.props;
 
   const wrapperStyle: React.CSSProperties = {
-    padding: '10px',
-    border: '1px dashed #17a2b8', // Default teal border
-    margin: '10px 0',
-    backgroundColor: bgColorToDisplay,
-    color: colorToDisplay, // Answer text will use this color
+    border: '1px solid #e0e0e0',
+    boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
+    padding: '24px',
+    margin: '16px 0',
+    borderRadius: '8px',
+    backgroundColor: '#ffffff',
+    position: 'relative',
+    textAlign: 'left',
   };
 
-  const questionStyle: React.CSSProperties = {
-    marginTop: 0,
-    marginBottom: '5px',
-    fontWeight: 'bold',
-    color: colorToDisplay !== 'inherit' && colorToDisplay !== darkTextColor ? colorToDisplay : '#0f6674', // Default teal question text
+  const labelStyle: React.CSSProperties = {
+    position: 'absolute',
+    top: '8px',
+    right: '12px',
+    fontSize: '0.75rem',
+    color: '#757575',
+    fontWeight: '500',
+    padding: '2px 6px',
+    backgroundColor: '#f5f5f5',
+    borderRadius: '4px',
   };
 
-  if (
-    colorToDisplay === darkTextColor &&
-    (bgColorToDisplay === 'transparent' || problematicLightBackgrounds.includes(bgPropLower))
-  ) {
-    questionStyle.color = darkTextColor;
-  } else if (colorToDisplay !== 'inherit') {
-    questionStyle.color = colorToDisplay;
-  }
+  const questionContainerStyle: React.CSSProperties = {
+    display: 'flex',
+    alignItems: 'center',
+    marginBottom: '10px',
+  };
+
+  const iconStyle: React.CSSProperties = {
+    marginRight: '10px',
+    fontSize: '1.3em',
+    color: '#333',
+  };
+
+  const questionTextStyle: React.CSSProperties = {
+    margin: 0,
+    fontSize: '1.1rem',
+    fontWeight: '600',
+    color: '#333',
+  };
+
+  const answerStyle: React.CSSProperties = {
+    fontSize: '1rem',
+    lineHeight: '1.6',
+    color: '#555',
+    paddingLeft: 'calc(1.3em + 10px)',
+  };
 
   return (
     <div data-faq-block style={wrapperStyle}>
-      <p style={questionStyle}>
-        {/* Question would be editable via a toolbar/settings panel */}
-        Q: {question}
-      </p>
-      <div ref={props.contentRef} className="bn-inline-content" />
+      <div style={labelStyle}>FAQ Item</div>
+      <div style={questionContainerStyle}>
+        <MdQuestionAnswer style={iconStyle} />
+        <p style={questionTextStyle}>{question}</p>
+      </div>
+      <div ref={props.contentRef} className="bn-inline-content" style={answerStyle} />
     </div>
   );
 };

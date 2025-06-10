@@ -18,10 +18,13 @@ export const insertTestimonialItem = (editor: CustomSchemaEditor): DefaultReactS
       content: [{ type: 'text', text: 'Quote placeholder...', styles: { italic: true } }],
     };
 
-    editor.insertBlocks([testimonialBlock], editor.getTextCursorPosition().block, 'after');
+    const insertedBlocks = editor.insertBlocks([testimonialBlock], editor.getTextCursorPosition().block, 'after');
+    if (insertedBlocks.length > 0) {
+      editor.setTextCursorPosition(insertedBlocks[0].id, 'end');
+    }
   },
   aliases: ['quote', 'customer', 'feedback'],
-  group: 'Content Blocks',
+  group: 'Custom Page Sections',
   icon: <MdFormatQuote size={18} />,
   subtext: 'Inserts a customer testimonial block.',
 });

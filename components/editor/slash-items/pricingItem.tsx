@@ -11,7 +11,10 @@ export const insertPricingItem = (editor: CustomSchemaEditor): DefaultReactSugge
       props: {},
       content: [{ type: 'text', text: 'Description of this pricing plan...', styles: {} }],
     };
-    editor.insertBlocks([pricingBlock], editor.getTextCursorPosition().block, 'after');
+    const insertedBlocks = editor.insertBlocks([pricingBlock], editor.getTextCursorPosition().block, 'after');
+    if (insertedBlocks.length > 0) {
+      editor.setTextCursorPosition(insertedBlocks[0].id, 'end');
+    }
   },
   aliases: ['pricing', 'plan', 'tier', 'cost'],
   group: 'Custom Page Sections',

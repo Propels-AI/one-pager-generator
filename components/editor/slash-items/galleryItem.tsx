@@ -11,7 +11,10 @@ export const insertGalleryItem = (editor: CustomSchemaEditor): DefaultReactSugge
       props: {},
       // No content for 'none' content type blocks initially
     };
-    editor.insertBlocks([galleryBlock], editor.getTextCursorPosition().block, 'after');
+    const insertedBlocks = editor.insertBlocks([galleryBlock], editor.getTextCursorPosition().block, 'after');
+    if (insertedBlocks.length > 0) {
+      editor.setTextCursorPosition(insertedBlocks[0].id, 'end');
+    }
   },
   aliases: ['gallery', 'images', 'photos'],
   group: 'Custom Page Sections',

@@ -3,20 +3,20 @@
 import React from 'react';
 import { defaultProps, type InlineContentSchema, type StyleSchema } from '@blocknote/core';
 import { createReactBlockSpec, type ReactCustomBlockRenderProps } from '@blocknote/react';
-import { MdExtension } from 'react-icons/md';
+import { TrendingUp } from 'lucide-react';
 
 const featureBlockPropsDefinition = {
   ...defaultProps,
+  name: { default: 'Feature Highlight' as string },
   // Add any specific props for FeatureBlock here later
 };
 
 export const featureBlockConfig = {
   type: 'feature' as const,
   name: 'Feature Highlight',
-  content: 'inline' as const,
+  content: 'none' as const,
   propSchema: featureBlockPropsDefinition,
-  icon: MdExtension,
-  placeholder: 'Enter feature description...',
+  icon: () => <TrendingUp size={18} color="#10B981" />,
 } as const;
 
 export type FeatureBlockRenderProps = ReactCustomBlockRenderProps<
@@ -26,64 +26,19 @@ export type FeatureBlockRenderProps = ReactCustomBlockRenderProps<
 >;
 
 export const FeatureBlockRenderComponent: React.FC<FeatureBlockRenderProps> = (props) => {
-  const { textColor: tcProp, backgroundColor: bgProp } = props.block.props;
-
-  let colorToDisplay = tcProp === 'default' ? 'inherit' : tcProp;
-  const bgColorToDisplay = bgProp === 'default' ? 'transparent' : bgProp;
-
-  const lightTextColors = [
-    'white',
-    '#fff',
-    '#ffffff',
-    'yellow',
-    'lightgray',
-    'lightyellow',
-    'lightcyan',
-    'lightpink',
-    '#fafafa',
-    '#f8f8f8',
-    '#f0f0f0',
-  ];
-  const problematicLightBackgrounds = [
-    'white',
-    '#fff',
-    '#ffffff',
-    'yellow',
-    'lightgray',
-    'lightyellow',
-    'beige',
-    '#fafafa',
-    '#f8f8f8',
-    '#f0f0f0',
-  ];
-  const darkTextColor = '#1E1E1E';
-
-  const tcPropLower = typeof tcProp === 'string' ? tcProp.toLowerCase() : 'default';
-  const bgPropLower = typeof bgProp === 'string' ? bgProp.toLowerCase() : 'default';
-
-  // Case 1: User selected a light text color AND a light background color
-  if (lightTextColors.includes(tcPropLower) && problematicLightBackgrounds.includes(bgPropLower)) {
-    colorToDisplay = darkTextColor;
-  }
-  // Case 2: User selected 'default' text (light on dark theme) AND a light background color
-  else if (tcProp === 'default' && problematicLightBackgrounds.includes(bgPropLower)) {
-    colorToDisplay = darkTextColor;
-  }
-
-  const wrapperStyle: React.CSSProperties = {
-    padding: '10px',
-    border: '1px dashed #ccc',
-    margin: '10px 0',
-    color: colorToDisplay,
-    backgroundColor: bgColorToDisplay,
+  const style = {
+    container: 'w-full border-t-4 border-emerald-500 bg-emerald-50 shadow-md my-4 rounded-md overflow-hidden',
+    header: 'text-emerald-700 bg-emerald-100 border-l-4 border-emerald-500 pl-4 py-3 flex items-center',
+    icon: <TrendingUp className="w-5 h-5 text-emerald-600 mr-3 flex-shrink-0" />,
+    title: 'Features', // Or 'Feature Highlight' if preferred, as per Option A this is the source of truth
   };
 
   return (
-    <div data-feature-block style={wrapperStyle}>
-      <h4 style={{ marginTop: 0, marginBottom: '5px', display: 'flex', alignItems: 'center' }}>
-        <MdExtension style={{ marginRight: '8px' }} /> Feature Highlight
-      </h4>
-      <div ref={props.contentRef} className="bn-inline-content" />
+    <div className={style.container} data-feature-block>
+      <div className={style.header}>
+        {style.icon}
+        <span className="font-semibold text-2xl">{style.title}</span>
+      </div>
     </div>
   );
 };

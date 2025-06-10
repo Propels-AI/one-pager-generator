@@ -13,7 +13,10 @@ export const insertFAQItem = (editor: CustomSchemaEditor): DefaultReactSuggestio
       },
       content: [{ type: 'text', text: 'Provide a clear and concise answer here.', styles: {} }],
     };
-    editor.insertBlocks([faqBlock], editor.getTextCursorPosition().block, 'after');
+    const insertedBlocks = editor.insertBlocks([faqBlock], editor.getTextCursorPosition().block, 'after');
+    if (insertedBlocks.length > 0) {
+      editor.setTextCursorPosition(insertedBlocks[0].id, 'end');
+    }
   },
   aliases: ['faq', 'question', 'answer'],
   group: 'Custom Page Sections',

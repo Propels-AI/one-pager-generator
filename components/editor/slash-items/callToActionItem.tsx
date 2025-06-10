@@ -14,7 +14,10 @@ export const insertCallToActionItem = (editor: CustomSchemaEditor): DefaultReact
       },
       content: [{ type: 'text', text: 'Encourage your audience to take the next step! ', styles: {} }],
     };
-    editor.insertBlocks([callToActionBlock], editor.getTextCursorPosition().block, 'after');
+    const insertedBlocks = editor.insertBlocks([callToActionBlock], editor.getTextCursorPosition().block, 'after');
+    if (insertedBlocks.length > 0) {
+      editor.setTextCursorPosition(insertedBlocks[0].id, 'end');
+    }
   },
   aliases: ['cta', 'signup', 'action'],
   group: 'Custom Page Sections',

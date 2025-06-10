@@ -8,31 +8,20 @@ export const insertProblemSectionItem = (editor: CustomSchemaEditor): DefaultRea
   title: 'Problem Section',
   onItemClick: () => {
     const problemStatement: PartialBlock<typeof editor.schema.blockSchema> = {
-      type: 'customHeading',
+      type: 'heading',
       props: {
-        level: 2,
-        textAlignment: 'center',
+        level: 1,
+        textAlignment: 'left',
       },
-      content: [{ type: 'text', text: 'The Core Problem', styles: { bold: true } }],
+      content: [{ type: 'text', text: 'The Core Problem', styles: { bold: false } }],
     };
 
-    const problemDescription1: PartialBlock<typeof editor.schema.blockSchema> = {
+    const problemDescription: PartialBlock<typeof editor.schema.blockSchema> = {
       type: 'paragraph',
       content: [
         {
           type: 'text',
           text: 'Describe the primary challenge or pain point your audience faces. Be specific and relatable. ',
-          styles: {},
-        },
-      ],
-    };
-
-    const problemDescription2: PartialBlock<typeof editor.schema.blockSchema> = {
-      type: 'paragraph',
-      content: [
-        {
-          type: 'text',
-          text: 'Elaborate on the consequences of this problem if left unaddressed. What are the negative impacts? ',
           styles: {},
         },
       ],
@@ -51,16 +40,12 @@ export const insertProblemSectionItem = (editor: CustomSchemaEditor): DefaultRea
       content: [{ type: 'text', text: 'Key aspect of the problem 3...', styles: {} }],
     };
 
-    const blocksToInsert = [
-      problemStatement,
-      problemDescription1,
-      problemDescription2,
-      bulletPoint1,
-      bulletPoint2,
-      bulletPoint3,
-    ];
+    const blocksToInsert = [problemStatement, problemDescription, bulletPoint1, bulletPoint2, bulletPoint3];
 
-    editor.insertBlocks(blocksToInsert, editor.getTextCursorPosition().block, 'after');
+    const insertedBlocks = editor.insertBlocks(blocksToInsert, editor.getTextCursorPosition().block, 'after');
+    if (insertedBlocks.length > 0) {
+      editor.setTextCursorPosition(insertedBlocks[0].id, 'end');
+    }
   },
   aliases: ['problem', 'issue', 'challenge', 'painpoint'],
   group: 'Sections',

@@ -29,6 +29,8 @@ import {
   pricingBlockSpec,
   faqBlockSpec,
   galleryBlockSpec,
+  problemBlockSpec, // Added import for problemBlockSpec
+  SocialBlockSpec,
 } from './blocks';
 import {
   insertProblemSectionItem,
@@ -40,6 +42,7 @@ import {
   insertPricingItem,
   insertFAQItem,
   insertGalleryItem,
+  insertSocial,
 } from './slash-items';
 
 const getCustomSlashMenuItems = (editor: CustomSchemaEditor): DefaultReactSuggestionItem[] => [
@@ -52,21 +55,24 @@ const getCustomSlashMenuItems = (editor: CustomSchemaEditor): DefaultReactSugges
   insertPricingItem(editor),
   insertFAQItem(editor),
   insertGalleryItem(editor),
+  insertSocial(editor),
   ...getDefaultReactSlashMenuItems(editor),
 ];
 
-const customSchema = BlockNoteSchema.create({
+export const customSchema = BlockNoteSchema.create({
   blockSpecs: {
     ...defaultBlockSpecs,
     customHeading: HeadlineBlockSpec,
     testimonial: testimonialBlockSpec,
     feature: featureBlockSpec,
+    problem: problemBlockSpec, // Added problemBlockSpec to schema
     solution: solutionBlockSpec,
     callToAction: callToActionBlockSpec,
     team: teamBlockSpec,
     pricing: pricingBlockSpec,
     faq: faqBlockSpec,
     gallery: galleryBlockSpec,
+    social: SocialBlockSpec,
   },
   inlineContentSpecs: defaultInlineContentSpecs,
   styleSpecs: defaultStyleSpecs,
@@ -109,7 +115,7 @@ export default function BlockNoteEditorComponent({ initialContent, onEditorReady
   }
 
   return (
-    <BlockNoteView editor={editor} slashMenu={false} data-theming-css-variables-demo theme="dark">
+    <BlockNoteView editor={editor} slashMenu={false} data-theming-css-variables-demo theme="light">
       <SuggestionMenuController
         triggerCharacter={'/'}
         getItems={async (query) => filterSuggestionItems(getCustomSlashMenuItems(editor), query)}

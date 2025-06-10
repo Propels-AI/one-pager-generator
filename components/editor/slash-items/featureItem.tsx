@@ -9,9 +9,11 @@ export const insertFeatureItem = (editor: CustomSchemaEditor): DefaultReactSugge
     const featureBlock: PartialBlock<typeof editor.schema.blockSchema> = {
       type: 'feature',
       props: {},
-      content: [{ type: 'text', text: 'Describe the feature here...', styles: {} }],
     };
-    editor.insertBlocks([featureBlock], editor.getTextCursorPosition().block, 'after');
+    const insertedBlocks = editor.insertBlocks([featureBlock], editor.getTextCursorPosition().block, 'after');
+    if (insertedBlocks.length > 0) {
+      editor.setTextCursorPosition(insertedBlocks[0].id, 'end');
+    }
   },
   aliases: ['feature', 'productfeature', 'highlight'],
   group: 'Custom Page Sections',

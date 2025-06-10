@@ -22,7 +22,7 @@ const BlockNoteEditor = dynamic(() => import('@/components/editor/BlockNoteEdito
   ),
 });
 
-const OnePagerRenderer = dynamic(() => import('@/components/one-pager-renderer').then(mod => mod.OnePagerRenderer), {
+const Preview = dynamic(() => import('@/components/preview').then((mod) => mod.Preview), {
   ssr: false,
   loading: () => (
     <div className="p-4 border rounded-md min-h-[calc(100vh-10rem)] flex items-center justify-center text-muted-foreground">
@@ -37,7 +37,9 @@ export default function CreateOnePagerPage() {
   const { user } = useAuth();
   const router = useRouter();
   const [editorInstance, setEditorInstance] = useState<BlockNoteEditorType | null>(null);
-  const [editorContent, setEditorContent] = useState<PartialBlock<typeof customSchema.blockSchema>[] | undefined>(undefined);
+  const [editorContent, setEditorContent] = useState<PartialBlock<typeof customSchema.blockSchema>[] | undefined>(
+    undefined
+  );
   const [internalTitle] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [isAuthDialogOpen, setIsAuthDialogOpen] = useState(false);
@@ -55,7 +57,7 @@ export default function CreateOnePagerPage() {
     setIsSaving(true);
     // Use editorContent if available (from onChange), otherwise fallback to editorInstance.document
     const contentToSave = editorContent || (editorInstance ? editorInstance.document : []);
-    
+
     const onePagerData = {
       baseOnePagerId: crypto.randomUUID(),
       itemSK: 'METADATA',
@@ -108,7 +110,7 @@ export default function CreateOnePagerPage() {
       } else {
         console.log('Auto-save conditions met, but editor missing. User may need to click save again.');
       }
-      setSaveAttemptedBeforeAuth(false); 
+      setSaveAttemptedBeforeAuth(false);
     }
   }, [user, saveAttemptedBeforeAuth, isAuthDialogOpen, editorInstance, executeSave]);
 
@@ -126,10 +128,17 @@ export default function CreateOnePagerPage() {
       <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="container flex h-14 items-center max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="mr-auto flex items-center">
-             <h1 className="font-semibold text-lg">Create One-Pager ({viewMode === 'editor' ? 'Editing' : 'Previewing'})</h1>
+            <h1 className="font-semibold text-lg">
+              Create One-Pager ({viewMode === 'editor' ? 'Editing' : 'Previewing'})
+            </h1>
           </div>
           <div className="flex flex-1 items-center justify-end space-x-2">
-            <Button onClick={() => setViewMode(viewMode === 'editor' ? 'preview' : 'editor')} variant="outline" size="icon" aria-label={viewMode === 'editor' ? 'Show Preview' : 'Show Editor'}>
+            <Button
+              onClick={() => setViewMode(viewMode === 'editor' ? 'preview' : 'editor')}
+              variant="outline"
+              size="icon"
+              aria-label={viewMode === 'editor' ? 'Show Preview' : 'Show Editor'}
+            >
               {viewMode === 'editor' ? <Eye className="h-4 w-4" /> : <Edit3 className="h-4 w-4" />}
             </Button>
             <Button onClick={handleSave} disabled={isSaving || !editorInstance} variant="default">
@@ -146,30 +155,34 @@ export default function CreateOnePagerPage() {
           </div>
         </div>
       </header>
-      
+
       <main className="flex-grow container mx-auto px-4 pt-8 pb-4 max-w-screen-xl">
         <div className="flex flex-col gap-6">
           {viewMode === 'editor' && (
             // Editor Column
             <div className="w-full">
-            <div className="rounded-lg min-h-[calc(100vh-120px)] bg-white dark:bg-gray-950 overflow-hidden">
-              <BlockNoteEditor onEditorReady={handleEditorReady} initialContent={editorContent} />
+              <div className="rounded-lg min-h-[calc(100vh-120px)] bg-white dark:bg-gray-950 overflow-hidden">
+                <BlockNoteEditor onEditorReady={handleEditorReady} initialContent={editorContent} />
+              </div>
             </div>
-          </div>
           )}
 
           {viewMode === 'preview' && (
             // Preview Column
             <div className="w-full h-full md:max-h-[calc(100vh-theme(spacing.14)-4rem)] overflow-y-auto">
-            <div className="p-6 bg-white dark:bg-gray-950 rounded-lg min-h-[calc(100vh-120px)] md:min-h-0">
-              <h2 className="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-100 border-b pb-2">Live Preview</h2>
-              {(editorInstance || editorContent) && customSchema ? (
-                <OnePagerRenderer blocks={editorContent || []} schema={customSchema} />
-              ) : (
-                <div className="text-center text-gray-500 dark:text-gray-400 py-10">Editor content will appear here.</div>
-              )}
+              <div className="p-6 bg-white dark:bg-gray-950 rounded-lg min-h-[calc(100vh-120px)] md:min-h-0">
+                <h2 className="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-100 border-b pb-2">
+                  Live Preview
+                </h2>
+                {(editorInstance || editorContent) && customSchema ? (
+                  <Preview content={editorContent} />
+                ) : (
+                  <div className="text-center text-gray-500 dark:text-gray-400 py-10">
+                    Editor content will appear here.
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
           )}
         </div>
       </main>

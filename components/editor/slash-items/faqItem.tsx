@@ -1,25 +1,30 @@
-import React from 'react';
-import type { DefaultReactSuggestionItem } from '@blocknote/react';
-import { MdQuestionAnswer } from 'react-icons/md';
-import type { CustomSchemaEditor, PartialBlock } from '../BlockNoteEditor';
+import { HelpCircle } from 'lucide-react';
+import { BlockNoteEditor, PartialBlock } from '@blocknote/core';
+import { faqBlockConfig } from '../blocks/FAQBlock'; // Ensure this path is correct
 
-export const insertFAQItem = (editor: CustomSchemaEditor): DefaultReactSuggestionItem => ({
-  title: 'FAQ Item',
+// Defines a slash menu item for inserting an FAQ block.
+export const insertFaq = (editor: BlockNoteEditor<any>) => ({
+  title: 'FAQ Section',
   onItemClick: () => {
-    const faqBlock: PartialBlock<typeof editor.schema.blockSchema> = {
+    // Block to insert.
+    const faqBlock: PartialBlock<any> = {
       type: 'faq',
       props: {
-        question: 'What is a common question?',
+        // Use default props from the block's config
+        heading: faqBlockConfig.propSchema.heading.default,
+        items: faqBlockConfig.propSchema.items.default,
       },
-      content: [{ type: 'text', text: 'Provide a clear and concise answer here.', styles: {} }],
+      // No 'content' field here as faqBlockConfig.content is 'none'
     };
-    const insertedBlocks = editor.insertBlocks([faqBlock], editor.getTextCursorPosition().block, 'after');
-    if (insertedBlocks.length > 0) {
-      editor.setTextCursorPosition(insertedBlocks[0].id, 'end');
-    }
+
+    editor.insertBlocks(
+      [faqBlock],
+      editor.getTextCursorPosition().block,
+      'after'
+    );
   },
-  aliases: ['faq', 'question', 'answer'],
+  aliases: ['faq', 'questions', 'accordion', 'frequently asked questions'],
   group: 'Custom Page Sections',
-  icon: <MdQuestionAnswer size={18} />,
-  subtext: 'Inserts an FAQ question and answer block.',
+  icon: <HelpCircle size={18} />,
+  subtext: 'Inserts a collapsible FAQ section.',
 });

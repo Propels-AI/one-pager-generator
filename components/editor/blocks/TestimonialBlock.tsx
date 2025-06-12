@@ -58,8 +58,8 @@ export const testimonialBlockSpec = createReactBlockSpec(testimonialBlockConfig,
     }
 
     const staticContent = (
-      <section className="py-8 md:py-12 lg:py-16">
-        <div className="container mx-auto px-4">
+      <section className="py-6">
+        <div className="container mx-auto">
           <div className="flex flex-col gap-6">
             <div className="grid grid-cols-1 items-stretch gap-x-0 gap-y-4 lg:grid-cols-3 lg:gap-4">
               <img
@@ -210,7 +210,7 @@ export const testimonialBlockSpec = createReactBlockSpec(testimonialBlockConfig,
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="absolute top-2 right-2 h-7 w-7"
+                          className="absolute top-2 right-2 h-7 w-7 text-black"
                           onClick={() => removeSubItem(index)}
                         >
                           <Trash2 className="h-4 w-4" />
@@ -251,6 +251,7 @@ export const testimonialBlockSpec = createReactBlockSpec(testimonialBlockConfig,
                   </Button>
                 </div>
 
+                <div className="my-4 border-t"></div>
                 <Button
                   onClick={() => {
                     editor.updateBlock(block, {
@@ -266,7 +267,7 @@ export const testimonialBlockSpec = createReactBlockSpec(testimonialBlockConfig,
                   }}
                   className="w-full mt-4"
                 >
-                  Done
+                  Save
                 </Button>
               </div>
             </PopoverContent>

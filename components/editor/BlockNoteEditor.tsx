@@ -24,13 +24,13 @@ import {
   testimonialBlockSpec,
   featureBlockSpec,
   solutionBlockSpec,
-  callToActionBlockSpec,
-  teamBlockSpec,
+  CallToActionBlockSpec,
+  TeamBlockSpec,
   pricingBlockSpec,
-  faqBlockSpec,
-  galleryBlockSpec,
-  problemBlockSpec, // Added import for problemBlockSpec
+  FaqBlockSpec,
+  problemBlockSpec,
   SocialBlockSpec,
+  TimelineBlockSpec,
 } from './blocks';
 import {
   insertProblemSectionItem,
@@ -40,9 +40,9 @@ import {
   insertCallToActionItem,
   insertTeamItem,
   insertPricingItem,
-  insertFAQItem,
-  insertGalleryItem,
+  insertFaq,
   insertSocial,
+  insertTimelineItem,
 } from './slash-items';
 
 const getCustomSlashMenuItems = (editor: CustomSchemaEditor): DefaultReactSuggestionItem[] => [
@@ -53,9 +53,9 @@ const getCustomSlashMenuItems = (editor: CustomSchemaEditor): DefaultReactSugges
   insertCallToActionItem(editor),
   insertTeamItem(editor),
   insertPricingItem(editor),
-  insertFAQItem(editor),
-  insertGalleryItem(editor),
+  insertFaq(editor),
   insertSocial(editor),
+  insertTimelineItem(editor),
   ...getDefaultReactSlashMenuItems(editor),
 ];
 
@@ -65,14 +65,14 @@ export const customSchema = BlockNoteSchema.create({
     customHeading: HeadlineBlockSpec,
     testimonial: testimonialBlockSpec,
     feature: featureBlockSpec,
-    problem: problemBlockSpec, // Added problemBlockSpec to schema
+    problem: problemBlockSpec,
     solution: solutionBlockSpec,
-    callToAction: callToActionBlockSpec,
-    team: teamBlockSpec,
+    callToAction: CallToActionBlockSpec,
+    team: TeamBlockSpec,
     pricing: pricingBlockSpec,
-    faq: faqBlockSpec,
-    gallery: galleryBlockSpec,
+    faq: FaqBlockSpec,
     social: SocialBlockSpec,
+    timeline: TimelineBlockSpec,
   },
   inlineContentSpecs: defaultInlineContentSpecs,
   styleSpecs: defaultStyleSpecs,
@@ -95,14 +95,6 @@ export default function BlockNoteEditorComponent({ initialContent, onEditorReady
   useEffect(() => {
     if (editor) {
       onEditorReady(editor);
-      const unsubscribeOnChange = editor.onChange((currentEditor) => {
-        console.log('Editor content changed:', currentEditor.topLevelBlocks);
-      });
-      return () => {
-        if (unsubscribeOnChange) {
-          unsubscribeOnChange();
-        }
-      };
     }
   }, [editor, onEditorReady]);
 

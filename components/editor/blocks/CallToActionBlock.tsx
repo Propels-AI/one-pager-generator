@@ -1,96 +1,215 @@
 'use client';
 
-import React from 'react';
-import { defaultProps, type InlineContentSchema, type StyleSchema } from '@blocknote/core';
-import { createReactBlockSpec, type ReactCustomBlockRenderProps } from '@blocknote/react';
-import { MdAdsClick } from 'react-icons/md';
+import React, { useState, useEffect } from 'react';
+import { createReactBlockSpec } from '@blocknote/react';
+import { MdAdsClick } from 'react-icons/md'; // Or your preferred icon
+import { Pencil } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Button as ShadButton } from '@/components/ui/button'; // Aliasing to avoid conflict with CTASection's Button
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 
-const callToActionBlockPropsDefinition = {
-  ...defaultProps,
-  buttonText: { default: 'Learn More' as string },
-  buttonURL: { default: '#' as string },
-  // Add other props like alignment later
-};
+// CTASection Component (from user request)
+interface CTASectionProps {
+  heading?: string;
+  description?: string;
+  primaryButtonText?: string;
+  secondaryButtonText?: string;
+  primaryButtonHref?: string;
+  secondaryButtonHref?: string;
+  onPrimaryClick?: () => void;
+  onSecondaryClick?: () => void;
+}
 
-export const callToActionBlockConfig = {
-  type: 'callToAction' as const,
-  name: 'Call To Action',
-  content: 'inline' as const,
-  propSchema: callToActionBlockPropsDefinition,
-  icon: MdAdsClick,
-  placeholder: 'Enter compelling text for the call to action...',
-} as const;
-
-export type CallToActionBlockRenderProps = ReactCustomBlockRenderProps<
-  typeof callToActionBlockConfig,
-  InlineContentSchema,
-  StyleSchema
->;
-
-export const CallToActionBlockRenderComponent: React.FC<CallToActionBlockRenderProps> = (props) => {
-  const { buttonText, buttonURL } = props.block.props;
-
-  const wrapperStyle: React.CSSProperties = {
-    border: '1px solid #e0e0e0',
-    boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
-    padding: '24px',
-    margin: '16px 0',
-    borderRadius: '8px',
-    backgroundColor: '#ffffff',
-    position: 'relative',
-    textAlign: 'left',
-  };
-
-  const labelStyle: React.CSSProperties = {
-    position: 'absolute',
-    top: '8px',
-    right: '12px',
-    fontSize: '0.75rem',
-    color: '#757575',
-    fontWeight: '500',
-    padding: '2px 6px',
-    backgroundColor: '#f5f5f5',
-    borderRadius: '4px',
-  };
+function CTASection({
+  // Renamed to avoid conflict with block name if any, and made it a regular function
+  heading = 'Ready to get started?',
+  description = 'Join thousands of users who are already using our platform.',
+  primaryButtonText = 'Get Started',
+  secondaryButtonText = 'Learn More',
+  primaryButtonHref,
+  secondaryButtonHref,
+  onPrimaryClick,
+  onSecondaryClick,
+}: CTASectionProps) {
+  const PrimaryButtonComponent = primaryButtonHref ? 'a' : 'button';
+  const SecondaryButtonComponent = secondaryButtonHref ? 'a' : 'button';
 
   return (
-    <div data-cta-block style={wrapperStyle}>
-      <div style={labelStyle}>Call to Action Section</div>
-      <div
-        ref={props.contentRef}
-        className="bn-inline-content"
-        style={{
-          marginBottom: '20px',
-          fontSize: '1rem',
-          lineHeight: '1.6',
-        }}
-      />
-      <div style={{ textAlign: 'center' }}>
-        <a
-          href={buttonURL}
-          onClick={(e) => {
-            if (props.editor.isEditable) e.preventDefault();
-          }}
-          style={{
-            display: 'inline-block',
-            padding: '10px 24px',
-            backgroundColor: '#007bff',
-            color: 'white',
-            textDecoration: 'none',
-            borderRadius: '6px',
-            fontWeight: 'bold',
-            transition: 'background-color 0.2s ease-in-out',
-          }}
-          onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#0056b3')}
-          onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = '#007bff')}
-        >
-          {buttonText}
-        </a>
+    <section className="w-full py-8">
+      <div className="w-full px-4 text-center">
+        {' '}
+        {/* Changed for full width content */}
+        <h2 className="text-2xl font-medium mb-3">{heading}</h2>
+        <p className="text-muted-foreground leading-relaxed">{description}</p> {/* Increased mb-8 to mb-12 */}
+        <div className="flex gap-3 justify-center mt-6">
+          <ShadButton asChild={!!primaryButtonHref} onClick={onPrimaryClick}>
+            <PrimaryButtonComponent {...(primaryButtonHref && { href: primaryButtonHref })}>
+              {primaryButtonText}
+            </PrimaryButtonComponent>
+          </ShadButton>
+          <ShadButton asChild={!!secondaryButtonHref} variant="ghost" onClick={onSecondaryClick}>
+            <SecondaryButtonComponent {...(secondaryButtonHref && { href: secondaryButtonHref })}>
+              {secondaryButtonText}
+            </SecondaryButtonComponent>
+          </ShadButton>
+        </div>
       </div>
-    </div>
+    </section>
   );
+}
+
+// BlockNote Prop Schema Definition
+const callToActionPropsDefinition = {
+  heading: { default: 'Ready to get started?' as string },
+  description: { default: 'Join thousands of users who are already using our platform.' as string },
+  primaryButtonText: { default: 'Get Started' as string },
+  primaryButtonHref: { default: '#' as string },
+  secondaryButtonText: { default: 'Learn More' as string },
+  secondaryButtonHref: { default: '#' as string },
 };
 
-export const callToActionBlockSpec = createReactBlockSpec(callToActionBlockConfig, {
-  render: CallToActionBlockRenderComponent,
+// BlockNote Block Configuration
+export const callToActionBlockConfig = {
+  type: 'callToAction' as const,
+  name: 'Call To Action Section',
+  content: 'none' as const, // No direct block content, all managed by props
+  propSchema: callToActionPropsDefinition,
+  icon: MdAdsClick,
+} as const;
+
+// BlockNote React Component
+export const CallToActionBlockSpec = createReactBlockSpec(callToActionBlockConfig, {
+  render: ({ block, editor }) => {
+    const [isEditing, setIsEditing] = useState(false);
+
+    // State for editable fields
+    const [currentHeading, setCurrentHeading] = useState(block.props.heading);
+    const [currentDescription, setCurrentDescription] = useState(block.props.description);
+    const [currentPrimaryButtonText, setCurrentPrimaryButtonText] = useState(block.props.primaryButtonText);
+    const [currentPrimaryButtonHref, setCurrentPrimaryButtonHref] = useState(block.props.primaryButtonHref);
+    const [currentSecondaryButtonText, setCurrentSecondaryButtonText] = useState(block.props.secondaryButtonText);
+    const [currentSecondaryButtonHref, setCurrentSecondaryButtonHref] = useState(block.props.secondaryButtonHref);
+
+    useEffect(() => {
+      setCurrentHeading(block.props.heading);
+      setCurrentDescription(block.props.description);
+      setCurrentPrimaryButtonText(block.props.primaryButtonText);
+      setCurrentPrimaryButtonHref(block.props.primaryButtonHref);
+      setCurrentSecondaryButtonText(block.props.secondaryButtonText);
+      setCurrentSecondaryButtonHref(block.props.secondaryButtonHref);
+    }, [
+      block.props.heading,
+      block.props.description,
+      block.props.primaryButtonText,
+      block.props.primaryButtonHref,
+      block.props.secondaryButtonText,
+      block.props.secondaryButtonHref,
+    ]);
+
+    const handleSave = () => {
+      editor.updateBlock(block, {
+        props: {
+          heading: currentHeading,
+          description: currentDescription,
+          primaryButtonText: currentPrimaryButtonText,
+          primaryButtonHref: currentPrimaryButtonHref,
+          secondaryButtonText: currentSecondaryButtonText,
+          secondaryButtonHref: currentSecondaryButtonHref,
+        },
+      });
+      setIsEditing(false);
+    };
+
+    return (
+      <div className="relative group w-full">
+        <CTASection
+          heading={block.props.heading}
+          description={block.props.description}
+          primaryButtonText={block.props.primaryButtonText}
+          primaryButtonHref={block.props.primaryButtonHref}
+          secondaryButtonText={block.props.secondaryButtonText}
+          secondaryButtonHref={block.props.secondaryButtonHref}
+        />
+        {editor.isEditable && (
+          <Popover
+            open={isEditing}
+            onOpenChange={(open) => {
+              setIsEditing(open);
+              if (open) {
+                // Sync with block props when opening
+                setCurrentHeading(block.props.heading);
+                setCurrentDescription(block.props.description);
+                setCurrentPrimaryButtonText(block.props.primaryButtonText);
+                setCurrentPrimaryButtonHref(block.props.primaryButtonHref);
+                setCurrentSecondaryButtonText(block.props.secondaryButtonText);
+                setCurrentSecondaryButtonHref(block.props.secondaryButtonHref);
+              }
+            }}
+          >
+            <PopoverTrigger asChild>
+              <ShadButton
+                variant="outline"
+                size="icon"
+                className="absolute top-4 right-4 h-8 w-8 bg-white opacity-100 md:opacity-0 group-hover:md:opacity-100 transition-opacity duration-300 z-10"
+              >
+                <Pencil className="h-4 w-4" />
+              </ShadButton>
+            </PopoverTrigger>
+            <PopoverContent className="w-[500px] p-4 space-y-4 max-h-[70vh] overflow-y-auto pr-2">
+              <div>
+                <Label htmlFor="ctaHeading">Heading</Label>
+                <Input id="ctaHeading" value={currentHeading} onChange={(e) => setCurrentHeading(e.target.value)} />
+              </div>
+              <div>
+                <Label htmlFor="ctaDescription">Description</Label>
+                <Textarea
+                  id="ctaDescription"
+                  value={currentDescription}
+                  onChange={(e) => setCurrentDescription(e.target.value)}
+                />
+              </div>
+              <div>
+                <Label htmlFor="ctaPrimaryBtnText">Primary Button Text</Label>
+                <Input
+                  id="ctaPrimaryBtnText"
+                  value={currentPrimaryButtonText}
+                  onChange={(e) => setCurrentPrimaryButtonText(e.target.value)}
+                />
+              </div>
+              <div>
+                <Label htmlFor="ctaPrimaryBtnHref">Primary Button URL</Label>
+                <Input
+                  id="ctaPrimaryBtnHref"
+                  value={currentPrimaryButtonHref}
+                  onChange={(e) => setCurrentPrimaryButtonHref(e.target.value)}
+                />
+              </div>
+              <div>
+                <Label htmlFor="ctaSecondaryBtnText">Secondary Button Text</Label>
+                <Input
+                  id="ctaSecondaryBtnText"
+                  value={currentSecondaryButtonText}
+                  onChange={(e) => setCurrentSecondaryButtonText(e.target.value)}
+                />
+              </div>
+              <div>
+                <Label htmlFor="ctaSecondaryBtnHref">Secondary Button URL</Label>
+                <Input
+                  id="ctaSecondaryBtnHref"
+                  value={currentSecondaryButtonHref}
+                  onChange={(e) => setCurrentSecondaryButtonHref(e.target.value)}
+                />
+              </div>
+              <div className="my-4 border-t"></div>
+              <ShadButton onClick={handleSave} className="w-full">
+                Save
+              </ShadButton>
+            </PopoverContent>
+          </Popover>
+        )}
+      </div>
+    );
+  },
 });

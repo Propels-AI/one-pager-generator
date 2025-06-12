@@ -28,13 +28,12 @@ export type SolutionBlockRenderProps = ReactCustomBlockRenderProps<
 
 export const SolutionBlockRenderComponent: React.FC<SolutionBlockRenderProps> = (props) => {
   const { contentRef } = props;
-
   const style = {
-    container: 'border-t-4 border-blue-500 bg-blue-50 shadow-md my-4 rounded-md overflow-hidden',
-    header: 'text-blue-700 bg-blue-100 border-l-4 border-blue-500 pl-4 py-3 flex items-center',
-    icon: <Lightbulb className="w-5 h-5 text-blue-600 mr-3 flex-shrink-0" />,
+    container: 'mb-4',
+    header: 'flex items-center gap-3 pb-2',
+    icon: <Lightbulb className="w-5 h-5" />,
     title: 'Solution',
-    contentContainer: 'p-4 text-gray-700',
+    contentContainer: 'pt-2',
   };
 
   return (

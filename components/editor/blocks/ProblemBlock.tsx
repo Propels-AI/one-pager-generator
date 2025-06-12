@@ -30,11 +30,11 @@ export const ProblemBlockRenderComponent: React.FC<ProblemBlockRenderProps> = (p
   const { contentRef } = props;
 
   const style = {
-    container: 'border-t-4 border-red-500 bg-red-950/30 shadow-lg backdrop-blur-sm my-4 rounded-md overflow-hidden',
-    header: 'text-red-100 bg-red-900/60 border-l-4 border-red-400 pl-4 py-3 flex items-center',
-    icon: <AlertTriangle className="w-5 h-5 text-red-200 mr-3 flex-shrink-0" />,
+    container: 'border-t border-border shadow-sm my-4 rounded-md',
+    header: 'border-l pl-4 py-3 flex items-center gap-3',
+    icon: <AlertTriangle className="w-5 h-5" />,
     title: 'Problem',
-    contentContainer: 'p-4 text-red-50',
+    contentContainer: 'p-4',
   };
 
   return (

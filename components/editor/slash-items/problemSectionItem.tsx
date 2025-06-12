@@ -47,8 +47,8 @@ export const insertProblemSectionItem = (editor: CustomSchemaEditor): DefaultRea
       editor.setTextCursorPosition(insertedBlocks[0].id, 'end');
     }
   },
-  aliases: ['problem', 'issue', 'challenge', 'painpoint'],
-  group: 'Sections',
+  aliases: ['problem', 'issue', 'challenge', 'pain point'],
+  group: 'Custom Page Sections',
   icon: <ProblemIcon size={18} />,
   subtext: 'Inserts a structured problem section template.',
 });

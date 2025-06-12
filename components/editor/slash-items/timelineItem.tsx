@@ -27,7 +27,7 @@ export const insertTimelineItem = (editor: CustomSchemaEditor) => ({
     );
   },
   aliases: ['timeline', 'history', 'events', 'chronology'],
-  group: 'Custom Blocks',
+  group: 'Custom Page Sections',
   icon: <MdTimeline size={18} />,
   subtext: 'Insert a customizable timeline section.',
 });

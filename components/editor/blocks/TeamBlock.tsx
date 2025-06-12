@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { createReactBlockSpec } from '@blocknote/react';
-import { Dribbble, Github, Linkedin, Pencil, Trash2, Users } from 'lucide-react';
+import { Pencil, Trash2, Users } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
@@ -17,9 +17,6 @@ interface TeamMember {
   role: string;
   description: string;
   avatar: string;
-  githubUrl?: string;
-  linkedinUrl?: string;
-  dribbbleUrl?: string;
 }
 
 interface TeamSectionDisplayProps {
@@ -53,23 +50,6 @@ const TeamSectionDisplay: React.FC<TeamSectionDisplayProps> = ({
             <p className="text-lg font-semibold">{person.name}</p>
             <p className="text-sm text-primary">{person.role}</p>
             <p className="py-2 text-sm text-muted-foreground">{person.description}</p>
-            <div className="mt-2 flex gap-3">
-              {person.githubUrl && (
-                <a href={person.githubUrl} target="_blank" rel="noopener noreferrer">
-                  <Github className="size-5 text-muted-foreground hover:text-foreground" />
-                </a>
-              )}
-              {person.linkedinUrl && (
-                <a href={person.linkedinUrl} target="_blank" rel="noopener noreferrer">
-                  <Linkedin className="size-5 text-muted-foreground hover:text-foreground" />
-                </a>
-              )}
-              {person.dribbbleUrl && (
-                <a href={person.dribbbleUrl} target="_blank" rel="noopener noreferrer">
-                  <Dribbble className="size-5 text-muted-foreground hover:text-foreground" />
-                </a>
-              )}
-            </div>
           </div>
         ))}
       </div>
@@ -85,9 +65,6 @@ const defaultPeople: TeamMember[] = [
     role: 'Lead Developer',
     description: 'Passionate about creating scalable and efficient web solutions.',
     avatar: 'https://deifkwefumgah.cloudfront.net/shadcnblocks/block/avatar-1.webp',
-    githubUrl: '#',
-    linkedinUrl: '#',
-    dribbbleUrl: '#',
   },
   {
     id: 'person-2',
@@ -95,8 +72,6 @@ const defaultPeople: TeamMember[] = [
     role: 'UX Designer',
     description: 'Crafting intuitive and engaging user experiences.',
     avatar: 'https://deifkwefumgah.cloudfront.net/shadcnblocks/block/avatar-2.webp',
-    githubUrl: '#',
-    linkedinUrl: '#',
   },
   {
     id: 'person-3',
@@ -104,7 +79,6 @@ const defaultPeople: TeamMember[] = [
     role: 'Project Manager',
     description: 'Ensuring projects are delivered on time and within budget.',
     avatar: 'https://deifkwefumgah.cloudfront.net/shadcnblocks/block/avatar-3.webp',
-    linkedinUrl: '#',
   },
   {
     id: 'person-4',
@@ -112,7 +86,6 @@ const defaultPeople: TeamMember[] = [
     role: 'Marketing Specialist',
     description: 'Driving growth through innovative marketing strategies.',
     avatar: 'https://deifkwefumgah.cloudfront.net/shadcnblocks/block/avatar-4.webp',
-    dribbbleUrl: '#',
   },
 ];
 
@@ -173,9 +146,6 @@ export const TeamBlockSpec = createReactBlockSpec(teamBlockConfig, {
           role: 'Role',
           description: 'Bio',
           avatar: 'https://via.placeholder.com/150',
-          githubUrl: '',
-          linkedinUrl: '',
-          dribbbleUrl: '',
         },
       ]);
     };
@@ -309,35 +279,6 @@ export const TeamBlockSpec = createReactBlockSpec(teamBlockConfig, {
                         onChange={(e) => handleMemberChange(index, 'description', e.target.value)}
                         className="min-h-[60px]"
                       />
-                    </div>
-                    <div className="grid grid-cols-3 gap-2">
-                      <div>
-                        <Label htmlFor={`memberGithub-${member.id}`}>GitHub URL</Label>
-                        <Input
-                          id={`memberGithub-${member.id}`}
-                          value={member.githubUrl || ''}
-                          onChange={(e) => handleMemberChange(index, 'githubUrl', e.target.value)}
-                          placeholder="Optional"
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor={`memberLinkedin-${member.id}`}>LinkedIn URL</Label>
-                        <Input
-                          id={`memberLinkedin-${member.id}`}
-                          value={member.linkedinUrl || ''}
-                          onChange={(e) => handleMemberChange(index, 'linkedinUrl', e.target.value)}
-                          placeholder="Optional"
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor={`memberDribbble-${member.id}`}>Dribbble URL</Label>
-                        <Input
-                          id={`memberDribbble-${member.id}`}
-                          value={member.dribbbleUrl || ''}
-                          onChange={(e) => handleMemberChange(index, 'dribbbleUrl', e.target.value)}
-                          placeholder="Optional"
-                        />
-                      </div>
                     </div>
                   </div>
                 ))}

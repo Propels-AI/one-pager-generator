@@ -1,14 +1,11 @@
 'use client';
 
+import { useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Input } from '@/components/ui/input';
-import {
-  InputOTP,
-  InputOTPGroup,
-  InputOTPSlot,
-} from '@/components/ui/input-otp';
+import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
 import { Label } from '@/components/ui/label';
 import { useId, useState, FormEvent, SVGProps } from 'react';
 import {
@@ -22,12 +19,7 @@ import {
 } from 'aws-amplify/auth';
 import { Loader2 } from 'lucide-react';
 
-type AuthMode =
-  | 'signIn'
-  | 'signUp'
-  | 'confirmSignUp'
-  | 'forgotPassword'
-  | 'confirmForgotPassword';
+type AuthMode = 'signIn' | 'signUp' | 'confirmSignUp' | 'forgotPassword' | 'confirmForgotPassword';
 
 function AuthSignInDialogComponent() {
   const id = useId();
@@ -41,6 +33,13 @@ function AuthSignInDialogComponent() {
   const [newPassword, setNewPassword] = useState(''); // For confirmForgotPassword mode
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [showSuccessAlert, setShowSuccessAlert] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('');
+
+  const handleAlertDismiss = () => {
+    setShowSuccessAlert(false);
+    setSuccessMessage('');
+  };
 
   const executeSignIn = async () => {
     const { isSignedIn, nextStep } = await signIn({
@@ -53,14 +52,10 @@ function AuthSignInDialogComponent() {
     } else {
       if (nextStep?.signInStep === 'CONFIRM_SIGN_UP') {
         setAuthMode('confirmSignUp');
-        setError(
-          'Your account is unconfirmed. Please enter the code sent to your email.'
-        );
+        setError('Your account is unconfirmed. Please enter the code sent to your email.');
       } else {
         console.log('Sign in next step:', nextStep);
-        setError(
-          `Sign in requires further steps: ${nextStep?.signInStep || 'unknown'}`
-        );
+        setError(`Sign in requires further steps: ${nextStep?.signInStep || 'unknown'}`);
       }
     }
   };
@@ -116,22 +111,20 @@ function AuthSignInDialogComponent() {
   };
 
   const handleConfirmSignUp = async (codeFromOtp?: string) => {
-    if (!signUpDetails && authMode !== 'confirmSignUp') {
-      setError(
-        'Cannot confirm sign up at this stage. Please try signing up again.'
-      );
+    setError(null);
+    setIsLoading(true);
+
+    if (authMode !== 'confirmSignUp') {
+      setError('Cannot confirm sign up at this stage. Please try signing up again.');
       setAuthMode('signUp');
+      setIsLoading(false);
       return;
     }
 
-    if (
-      signUpDetails &&
-      signUpDetails.nextStep.signUpStep !== 'CONFIRM_SIGN_UP'
-    ) {
-      setError(
-        'Cannot confirm sign up at this stage. Please try signing up again.'
-      );
+    if (signUpDetails && signUpDetails.nextStep.signUpStep !== 'CONFIRM_SIGN_UP') {
+      setError('Cannot confirm sign up at this stage. Please try signing up again.');
       setAuthMode('signUp');
+      setIsLoading(false);
       return;
     }
 
@@ -139,15 +132,37 @@ function AuthSignInDialogComponent() {
 
     if (!currentCode || currentCode.length < 6) {
       setError('Invalid confirmation code. Please enter a 6-digit code.');
+      setIsLoading(false);
       return;
     }
 
-    await confirmSignUp({ username: email, confirmationCode: currentCode });
-    alert('Account confirmed! Please sign in with your credentials.');
-    setAuthMode('signIn');
-    setPassword('');
-    setConfirmPassword('');
-    setConfirmationCode('');
+    try {
+      await confirmSignUp({ username: email, confirmationCode: currentCode });
+
+      setSuccessMessage('Account confirmed! Please sign in with your credentials.');
+      setShowSuccessAlert(true);
+      setAuthMode('signIn');
+      setPassword('');
+      setConfirmPassword('');
+      setConfirmationCode('');
+    } catch (err: any) {
+      console.error('Confirm sign up error:', err);
+      if (err.name === 'CodeMismatchException') {
+        setError('The confirmation code you entered is incorrect. Please try again.');
+      } else if (err.name === 'ExpiredCodeException') {
+        setError('The confirmation code has expired. Please request a new one.');
+      } else if (err.name === 'UserNotFoundException') {
+        setError('This account could not be found. Please try signing up again.');
+      } else if (err.name === 'TooManyFailedAttemptsException') {
+        setError('Too many failed attempts. Please try again later.');
+      } else if (err.name === 'TooManyRequestsException') {
+        setError('Too many requests. Please try again later.');
+      } else {
+        setError(err.message || 'An error occurred during confirmation. Please try again.');
+      }
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleResendCode = async () => {
@@ -155,7 +170,8 @@ function AuthSignInDialogComponent() {
     setError(null);
     try {
       await resendSignUpCode({ username: email });
-      alert('Confirmation code resent. Please check your email.');
+      setSuccessMessage('Confirmation code resent. Please check your email.');
+      setShowSuccessAlert(true);
     } catch (err: any) {
       setError(err.message || 'Failed to resend confirmation code.');
     } finally {
@@ -173,9 +189,7 @@ function AuthSignInDialogComponent() {
     try {
       await resetPassword({ username: email });
       setAuthMode('confirmForgotPassword');
-      setError(
-        'Password reset code sent. Check your email and enter the code below.'
-      );
+      setError('Password reset code sent. Check your email and enter the code below.');
     } catch (err: any) {
       setError(err.message || 'Failed to send password reset code.');
     } finally {
@@ -199,9 +213,7 @@ function AuthSignInDialogComponent() {
     setPassword('');
     setNewPassword('');
     setConfirmationCode('');
-    setError(
-      'Password successfully reset. Please sign in with your new password.'
-    );
+    setError('Password successfully reset. Please sign in with your new password.');
   };
 
   return (
@@ -322,12 +334,9 @@ function AuthSignInDialogComponent() {
           )}
 
           {/* Confirmation Code Input (OTP) (shown in confirmSignUp and confirmForgotPassword) */}
-          {(authMode === 'confirmSignUp' ||
-            authMode === 'confirmForgotPassword') && (
+          {(authMode === 'confirmSignUp' || authMode === 'confirmForgotPassword') && (
             <div className="space-y-2">
-              <Label htmlFor={`${id}-confirmation-code`}>
-                Confirmation Code
-              </Label>
+              <Label htmlFor={`${id}-confirmation-code`}>Confirmation Code</Label>
               <InputOTP
                 maxLength={6}
                 value={confirmationCode}
@@ -358,9 +367,7 @@ function AuthSignInDialogComponent() {
                     onClick={handleResendCode}
                     disabled={isLoading}
                   >
-                    {isLoading && authMode === 'confirmSignUp' && (
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    )}
+                    {isLoading && authMode === 'confirmSignUp' && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                     Send code again.
                   </Button>
                 </div>
@@ -375,9 +382,7 @@ function AuthSignInDialogComponent() {
               <Checkbox
                 id={`${id}-remember-me`}
                 checked={rememberMe}
-                onCheckedChange={(checkedState) =>
-                  setRememberMe(Boolean(checkedState))
-                }
+                onCheckedChange={(checkedState) => setRememberMe(Boolean(checkedState))}
                 disabled={isLoading}
               />
               <label
@@ -406,18 +411,10 @@ function AuthSignInDialogComponent() {
           </div>
         )}
 
-        {error && (
-          <p className="text-sm text-red-600 dark:text-red-500 text-center">
-            {error}
-          </p>
-        )}
+        {error && <p className="text-sm text-red-600 dark:text-red-500 text-center">{error}</p>}
 
         <Button
-          type={
-            authMode === 'signUp' || authMode === 'forgotPassword'
-              ? 'button'
-              : 'submit'
-          }
+          type={authMode === 'signUp' || authMode === 'forgotPassword' ? 'button' : 'submit'}
           className="w-full"
           disabled={isLoading}
           onClick={
@@ -493,9 +490,7 @@ function AuthSignInDialogComponent() {
             </Button>
           </p>
         )}
-        {(authMode === 'forgotPassword' ||
-          authMode === 'confirmForgotPassword' ||
-          authMode === 'confirmSignUp') && (
+        {(authMode === 'forgotPassword' || authMode === 'confirmForgotPassword' || authMode === 'confirmSignUp') && (
           <p className="text-sm text-center text-muted-foreground">
             Back to{' '}
             <Button
@@ -518,12 +513,18 @@ function AuthSignInDialogComponent() {
         )}
       </form>
 
+      {showSuccessAlert && (
+        <div className="fixed top-4 left-1/2 transform -translate-x-1/2 w-full max-w-md px-4 z-50">
+          <Alert duration={5000} onDismiss={handleAlertDismiss} showCloseButton>
+            <AlertDescription>{successMessage}</AlertDescription>
+          </Alert>
+        </div>
+      )}
       {authMode !== 'confirmSignUp' && (
         <>
           <div className="flex items-center gap-3 before:h-px before:flex-1 before:bg-border after:h-px after:flex-1 after:bg-border">
             <span className="text-xs text-muted-foreground">Or</span>
           </div>
-
           <Button
             variant="outline"
             className="w-full flex items-center justify-center gap-2"
@@ -545,4 +546,4 @@ const GoogleIcon = (props: SVGProps<SVGSVGElement>) => (
   </svg>
 );
 
-export { AuthSignInDialogComponent as AuthSignInDialog }; // Export with a more descriptive name
+export { AuthSignInDialogComponent as AuthSignInDialog };

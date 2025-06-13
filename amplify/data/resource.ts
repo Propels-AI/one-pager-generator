@@ -25,6 +25,14 @@ const schema = a
         gsi1PK: a.string(), // Will store ownerUserId (e.g., USER#<id>) for OnePager items
         gsi1SK: a.string(), // Will store <STATUS>#<statusUpdatedAt_ISO_string> for OnePager items
 
+        // SharedLink attributes
+        baseOnePagerId: a.string(), // Stores PK of the OnePager item (e.g., OP#<id>)
+        recipientNameForDisplay: a.string(),
+
+        // GSI attributes for byOnePager (for SharedLink items)
+        gsi2PK: a.string(), // Will store baseOnePagerId (e.g., OP#<id>)
+        gsi2SK: a.string(), // Will store creation timestamp
+
         // Amplify automatically adds createdAt, updatedAt, _version, _lastChangedAt, _deleted
       })
       .identifier(['PK', 'SK'])
@@ -32,6 +40,9 @@ const schema = a
         index('gsi1PK') // Define GSI on gsi1PK
           .sortKeys(['gsi1SK']) // Add gsi1SK as the sort key for this GSI
           .name('byOwnerAndStatusDate'),
+        index('gsi2PK')
+          .sortKeys(['gsi2SK'])
+          .name('byOnePager'),
       ])
       .authorization((allow) => [
         // The postConfirmation function has schema-level access granted below.
@@ -39,7 +50,7 @@ const schema = a
         allow.authenticated().to(['create', 'read', 'update', 'delete']),
         allow.publicApiKey().to(['read']),
       ]),
-    // Define SharedLink items within AppItem in later sprints
+
   })
   .authorization((allow) => [
     allow.resource(postConfirmation), // Grant function resource access to the schema

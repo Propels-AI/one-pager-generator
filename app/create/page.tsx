@@ -11,6 +11,7 @@ import { AuthSignInDialog } from '@/components/ui/AuthSignInDialog';
 import dynamic from 'next/dynamic';
 import type { CustomSchemaEditor as BlockNoteEditorType, PartialBlock } from '@/components/editor/BlockNoteEditor';
 import { customSchema } from '@/components/editor/BlockNoteEditor';
+import { v4 as uuidv4 } from 'uuid';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 
 const BlockNoteEditor = dynamic(() => import('@/components/editor/BlockNoteEditor'), {
@@ -54,33 +55,38 @@ export default function CreateOnePagerPage() {
       return;
     }
 
-    setIsSaving(true);
-    // Use editorContent if available (from onChange), otherwise fallback to editorInstance.document
-    const contentToSave = editorContent || (editorInstance ? editorInstance.document : []);
+    const cognitoUserId = user.userId;
+    const userPK = `USER#${cognitoUserId}`;
+    const onePagerUUID = uuidv4();
+    const currentDateTime = new Date();
+    const currentStatus = 'DRAFT';
+    const statusUpdatedAtISO = currentDateTime.toISOString();
 
-    const onePagerData = {
-      baseOnePagerId: crypto.randomUUID(),
-      itemSK: 'METADATA',
-      ownerUserId: user.userId,
+    const appItemData = {
+      PK: `ONEPAGER#${onePagerUUID}`,
+      SK: 'METADATA', // Main item for the OnePager
+      entityType: 'OnePager',
+      ownerUserId: userPK, // Link to the UserProfile item's PK
       internalTitle: finalInternalTitle,
-      status: 'DRAFT',
-      statusUpdatedAt: `STATUS#DRAFT#${new Date().toISOString()}`,
-      templateId: 'default_template_v1',
-      contentBlocks: JSON.stringify(contentToSave),
+      status: currentStatus,
+      statusUpdatedAt: statusUpdatedAtISO,
+      templateId: 'default', // Or from a selector
+      contentBlocks: JSON.stringify(editorInstance.document || []),
+      gsi1PK: userPK, // For querying by owner
+      gsi1SK: `${currentStatus}#${statusUpdatedAtISO}`, // For sorting by status and date
     };
 
     try {
-      const { data: newOnePager, errors } = await client.models.OnePager.create(onePagerData);
-      if (errors) {
-        console.error('Error creating OnePager:', errors);
-        alert(`Error creating OnePager: ${errors.map((e) => e.message).join('\n')}`);
-      } else if (newOnePager) {
-        console.log('OnePager created:', newOnePager);
-        alert('One-Pager saved successfully!');
-        router.push('/dashboard');
+      const result = await client.models.Entity.create(appItemData as any); // Using 'as any' for now if type conflicts arise with optional fields
+      console.log('Entity (OnePager) saved:', result);
+      if (result.data) {
+        router.push(`/edit/${onePagerUUID}`); 
+      } else if (result.errors) {
+        console.error('Error saving Entity (OnePager):', result.errors);
+        alert(`Failed to save: ${result.errors.map((e: any) => e.message).join(', ')}`);
       }
-    } catch (error) {
-      console.error('Unexpected error creating OnePager:', error);
+    } catch (e: any) {
+      console.error('Unexpected error creating OnePager:', e);
       alert('An unexpected error occurred while saving.');
     } finally {
       setIsSaving(false);

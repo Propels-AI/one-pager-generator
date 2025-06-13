@@ -8,15 +8,15 @@ import { TrendingUp } from 'lucide-react';
 const featureBlockPropsDefinition = {
   ...defaultProps,
   name: { default: 'Feature Highlight' as string },
-  // Add any specific props for FeatureBlock here later
 };
 
 export const featureBlockConfig = {
   type: 'feature' as const,
   name: 'Feature Highlight',
-  content: 'none' as const,
+  content: 'inline' as const,
   propSchema: featureBlockPropsDefinition,
   icon: () => <TrendingUp size={18} color="#10B981" />,
+  placeholder: 'Describe the feature...',
 } as const;
 
 export type FeatureBlockRenderProps = ReactCustomBlockRenderProps<
@@ -26,18 +26,30 @@ export type FeatureBlockRenderProps = ReactCustomBlockRenderProps<
 >;
 
 export const FeatureBlockRenderComponent: React.FC<FeatureBlockRenderProps> = (props) => {
+  const { contentRef } = props;
   const style = {
-    container: 'w-full border-t-4 border-emerald-500 bg-emerald-50 shadow-md my-4 rounded-md overflow-hidden',
-    header: 'text-emerald-700 bg-emerald-100 border-l-4 border-emerald-500 pl-4 py-3 flex items-center',
-    icon: <TrendingUp className="w-5 h-5 text-emerald-600 mr-3 flex-shrink-0" />,
-    title: 'Features', // Or 'Feature Highlight' if preferred, as per Option A this is the source of truth
+    container: 'mb-4',
+    header: 'flex items-center gap-3 pb-2',
+    icon: <TrendingUp className="w-5 h-5" />,
+    title: 'Feature',
+    contentContainer: 'pt-2',
   };
 
   return (
-    <div className={style.container} data-feature-block>
+    <div className={style.container} data-solution-block>
       <div className={style.header}>
         {style.icon}
-        <span className="font-semibold text-2xl">{style.title}</span>
+        <span className="font-semibold text-lg">{style.title}</span>
+      </div>
+      <div className={style.contentContainer}>
+        <div
+          ref={contentRef}
+          className="bn-inline-content"
+          style={{
+            fontSize: '1rem',
+            lineHeight: '1.6',
+          }}
+        />
       </div>
     </div>
   );

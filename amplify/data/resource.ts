@@ -1,45 +1,49 @@
 import { type ClientSchema, a, defineData } from '@aws-amplify/backend';
+import { postConfirmation } from '../auth/post-confirmation/resource'; // Will be created in next step
 
-/*== STEP 1 ===============================================================
-The section below creates a Todo database table with a "content" field. Try
-adding a new "isDone" field as a boolean. The authorization rule below
-specifies that any user authenticated via an API key can "create", "read",
-"update", and "delete" any "Todo" records.
-=========================================================================*/
-const schema = a.schema({
-  UserProfile: a
-    .model({
-      userId: a.id().required(), // This will be the Cognito User Sub
-      email: a.email().required(),
-      displayName: a.string(),
-      // Amplify automatically adds createdAt and updatedAt
-    })
-    .authorization((allow) => [
-      allow.ownerDefinedIn('userId').to(['read', 'update']),
-    ]),
+const schema = a
+  .schema({
+    Entity: a
+      .model({
+        PK: a.string().required(), // e.g., USER#<id>, ONEPAGER#<id>
+        SK: a.string().required(), // e.g., METADATA, DRAFT#<timestamp>
+        entityType: a.string().required(), // "UserProfile", "OnePager"
 
-  OnePager: a
-    .model({
-      baseOnePagerId: a.string().required(),
-      itemSK: a.string().required().default("METADATA"),
-      ownerUserId: a.string().required(), // Links to Cognito user sub
-      statusUpdatedAt: a.string().required(), // Composite: STATUS#<status>#<updatedAtISOString>
-      internalTitle: a.string().required(),
-      status: a.string().required(), // e.g., 'DRAFT', 'PUBLISHED'
-      templateId: a.string().required(),
-      contentBlocks: a.json().required(), // For BlockNote content
-      // Amplify automatically adds createdAt and updatedAt
-    })
-    .identifier(['baseOnePagerId', 'itemSK']) // Custom primary key
-    .secondaryIndexes(index => [
-      index('ownerUserId').sortKeys(['statusUpdatedAt']).name('UserPagesIndex') // GSI1 - Corrected syntax
-    ])
-    .authorization((allow) => [
-      allow.ownerDefinedIn('ownerUserId').to(['create', 'read', 'update', 'delete']),
-      allow.publicApiKey().to(['read']) // Public read via API Key - Corrected syntax
-    ]),
-  // Define SharedLink model here in later sprints
-});
+        // UserProfile attributes
+        email: a.email(),
+        displayName: a.string(),
+
+        // OnePager attributes
+        ownerUserId: a.string(), // Stores PK of the UserProfile item (e.g., USER#<id>)
+        internalTitle: a.string(),
+        status: a.enum(['DRAFT', 'PUBLISHED', 'ARCHIVED']),
+        statusUpdatedAt: a.datetime(), // Actual datetime for sorting, used to construct gsi1SK
+        templateId: a.string(),
+        contentBlocks: a.json(),
+
+        // GSI attributes for byOwnerAndStatusDate
+        gsi1PK: a.string(), // Will store ownerUserId (e.g., USER#<id>) for OnePager items
+        gsi1SK: a.string(), // Will store <STATUS>#<statusUpdatedAt_ISO_string> for OnePager items
+
+        // Amplify automatically adds createdAt, updatedAt, _version, _lastChangedAt, _deleted
+      })
+      .identifier(['PK', 'SK'])
+      .secondaryIndexes((index) => [
+        index('gsi1PK') // Define GSI on gsi1PK
+          .sortKeys(['gsi1SK']) // Add gsi1SK as the sort key for this GSI
+          .name('byOwnerAndStatusDate'),
+      ])
+      .authorization((allow) => [
+        // The postConfirmation function has schema-level access granted below.
+        // Specific operations are handled by its client calls.
+        allow.authenticated().to(['create', 'read', 'update', 'delete']),
+        allow.publicApiKey().to(['read']),
+      ]),
+    // Define SharedLink items within AppItem in later sprints
+  })
+  .authorization((allow) => [
+    allow.resource(postConfirmation), // Grant function resource access to the schema
+  ]);
 
 export type Schema = ClientSchema<typeof schema>;
 
@@ -47,37 +51,9 @@ export const data = defineData({
   schema,
   authorizationModes: {
     defaultAuthorizationMode: 'userPool',
-    apiKeyAuthorizationMode: { // Added API Key auth mode for public access
+    apiKeyAuthorizationMode: {
+      // Added API Key auth mode for public access
       expiresInDays: 30,
     },
   },
 });
-
-/*== STEP 2 ===============================================================
-Go to your frontend source code. From your client-side code, generate a
-Data client to make CRUDL requests to your table. (THIS SNIPPET WILL ONLY
-WORK IN THE FRONTEND CODE FILE.)
-
-Using JavaScript or Next.js React Server Components, Middleware, Server 
-Actions or Pages Router? Review how to generate Data clients for those use
-cases: https://docs.amplify.aws/gen2/build-a-backend/data/connect-to-API/
-=========================================================================*/
-
-/*
-"use client"
-import { generateClient } from "aws-amplify/data";
-import type { Schema } from "@/amplify/data/resource";
-
-const client = generateClient<Schema>() // use this Data client for CRUDL requests
-*/
-
-/*== STEP 3 ===============================================================
-Fetch records from the database and use them in your frontend component.
-(THIS SNIPPET WILL ONLY WORK IN THE FRONTEND CODE FILE.)
-=========================================================================*/
-
-/* For example, in a React component, you can use this snippet in your
-  function's RETURN statement */
-// const { data: todos } = await client.models.Todo.list()
-
-// return <ul>{todos.map(todo => <li key={todo.id}>{todo.content}</li>)}</ul>

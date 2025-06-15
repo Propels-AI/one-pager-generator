@@ -4,6 +4,7 @@ import './globals.css';
 import { TanstackQueryProvider } from "@/components/providers/TanstackQueryProvider";
 import { ThemeProvider } from "@/components/ui/theme-provider";
 import { AuthProvider } from "@/components/providers/AuthProvider";
+import { Toaster as SonnerToaster } from "@/components/ui/sonner";
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -26,6 +27,7 @@ export default function RootLayout({
               {children}
             </AuthProvider>
           </TanstackQueryProvider>
+          <SonnerToaster position="bottom-right" />
         </ThemeProvider>
       </body>
     </html>

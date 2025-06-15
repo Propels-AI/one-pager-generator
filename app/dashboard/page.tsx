@@ -86,9 +86,9 @@ export default function DashboardPage() {
             {!onePagersIsLoading && !onePagersError && onePagers && onePagers.length > 0 && (
               <ul className="mt-4 space-y-2">
                 {onePagers.map((pager) => (
-                  <Link 
-                    key={pager.PK} 
-                    href={`/edit/${pager.PK}`} 
+                  <Link
+                    key={pager.PK}
+                    href={`/edit/${pager.PK.split('#')[1]}`}
                     className="block rounded-md border p-3 hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800 transition-colors"
                   >
                     <li className="list-none">
@@ -113,9 +113,9 @@ export default function DashboardPage() {
             {!onePagersIsLoading && !onePagersError && onePagers && onePagers.length > 0 && (
               <ul className="mt-4 space-y-2">
                 {onePagers.map((pager) => (
-                  <Link 
-                    key={pager.PK} 
-                    href={`/edit/${pager.PK}`} 
+                  <Link
+                    key={pager.PK}
+                    href={`/edit/${pager.PK.split('#')[1]}`}
                     className="block rounded-md border p-3 hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800 transition-colors"
                   >
                     <li className="list-none">

@@ -1,12 +1,6 @@
 'use client';
 
-import React, {
-  createContext,
-  useContext,
-  useEffect,
-  useState,
-  ReactNode,
-} from 'react';
+import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { Amplify } from 'aws-amplify';
 import { Hub } from '@aws-amplify/core';
 import {
@@ -19,11 +13,10 @@ import {
 import outputs from '@/amplify_outputs.json';
 import { useRouter } from 'next/navigation';
 
-Amplify.configure(outputs, { ssr: true }); // Enable SSR for Amplify
-
+Amplify.configure(outputs, { ssr: true });
 interface AuthContextType {
   user: AuthUser | null;
-  userProfile: FetchUserAttributesOutput | null; // To store attributes like email, custom attributes
+  userProfile: FetchUserAttributesOutput | null;
   isLoading: boolean;
   handleSignOut: () => Promise<void>;
 }
@@ -32,8 +25,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<AuthUser | null>(null);
-  const [userProfile, setUserProfile] =
-    useState<FetchUserAttributesOutput | null>(null);
+  const [userProfile, setUserProfile] = useState<FetchUserAttributesOutput | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
 
@@ -61,15 +53,30 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       switch (payload.event) {
         case 'signedIn':
           checkCurrentUser(); // Re-check user and fetch attributes
-          router.push('/dashboard'); // Redirect to dashboard
+          try {
+            const pendingDataString = localStorage.getItem('pendingCreateOnePager');
+            if (pendingDataString) {
+              const pendingData = JSON.parse(pendingDataString);
+              if (pendingData.returnTo) {
+                console.log('AuthProvider: Redirecting to stored returnTo path:', pendingData.returnTo);
+                router.push(pendingData.returnTo);
+              } else {
+                router.push('/dashboard');
+              }
+            } else {
+              router.push('/dashboard');
+            }
+          } catch (error) {
+            console.error('AuthProvider: Error reading or parsing localStorage for redirect:', error);
+            router.push('/dashboard');
+          }
           break;
         case 'signedOut':
           setUser(null);
           setUserProfile(null);
-          setIsLoading(false); // Reset loading state
-          router.push('/auth/portal'); // Ensure redirection
+          setIsLoading(false);
+          router.push('/auth/portal');
           break;
-        // Add other cases like 'signUp', 'autoSignIn' if needed
       }
     });
 
@@ -79,26 +86,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     };
   }, []);
 
-  // Placeholder for signOut function - to be implemented fully later
   const handleSignOut = async () => {
-    setIsLoading(true); // Set loading true at the start of sign out
+    setIsLoading(true);
     try {
       await signOut();
-      // The Hub listener for 'signedOut' will now handle setting user to null,
-      // setting isLoading to false, and the redirect.
-      // router.push('/auth/portal'); // This can be removed if Hub listener handles it reliably
     } catch (error) {
       console.error('Error signing out: ', error);
-      setIsLoading(false); // Reset loading state in case of error
+      setIsLoading(false);
     }
   };
 
   return (
-    <AuthContext.Provider
-      value={{ user, userProfile, isLoading, handleSignOut }}
-    >
-      {children}
-    </AuthContext.Provider>
+    <AuthContext.Provider value={{ user, userProfile, isLoading, handleSignOut }}>{children}</AuthContext.Provider>
   );
 };
 

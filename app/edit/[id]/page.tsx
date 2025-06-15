@@ -295,7 +295,7 @@ export default function EditOnePagerPage() {
       {isAuthDialogOpen && (
         <Dialog open={isAuthDialogOpen} onOpenChange={setIsAuthDialogOpen}>
           <DialogContent className="sm:max-w-[425px] md:max-w-[550px] lg:max-w-[700px] p-0 overflow-y-auto max-h-[90vh]">
-            <AuthSignInDialog />
+            <AuthSignInDialog onAuthSuccess={() => setIsAuthDialogOpen(false)} />
           </DialogContent>
         </Dialog>
       )}

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
+import { Hub } from '@aws-amplify/core';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -21,7 +22,11 @@ import { Loader2 } from 'lucide-react';
 
 type AuthMode = 'signIn' | 'signUp' | 'confirmSignUp' | 'forgotPassword' | 'confirmForgotPassword';
 
-function AuthSignInDialogComponent() {
+interface AuthSignInDialogProps {
+  onAuthSuccess?: () => void;
+}
+
+function AuthSignInDialogComponent({ onAuthSuccess }: AuthSignInDialogProps) {
   const id = useId();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -35,6 +40,23 @@ function AuthSignInDialogComponent() {
   const [isLoading, setIsLoading] = useState(false);
   const [showSuccessAlert, setShowSuccessAlert] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
+
+  useEffect(() => {
+    const hubListenerCancel = Hub.listen('auth', ({ payload }) => {
+      switch (payload.event) {
+        case 'signedIn':
+          console.log('AuthSignInDialog: Hub detected signedIn event.');
+          if (onAuthSuccess) {
+            onAuthSuccess();
+          }
+          break;
+      }
+    });
+
+    return () => {
+      hubListenerCancel();
+    };
+  }, [onAuthSuccess]);
 
   const handleAlertDismiss = () => {
     setShowSuccessAlert(false);

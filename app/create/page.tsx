@@ -42,7 +42,7 @@ export default function CreateOnePagerPage() {
   const [editorContent, setEditorContent] = useState<PartialBlock<typeof customSchema.blockSchema>[] | undefined>(
     undefined
   );
-  const [internalTitle] = useState('');
+
   const [isSaving, setIsSaving] = useState(false);
   const [isAuthDialogOpen, setIsAuthDialogOpen] = useState(false);
   const [saveIntentAfterAuth, setSaveIntentAfterAuth] = useState<'draft' | 'publish' | null>(null);
@@ -53,7 +53,7 @@ export default function CreateOnePagerPage() {
     async (isPublishing: boolean) => {
       setCurrentSavingAction(isPublishing ? 'publish' : 'draft');
       setIsSaving(true);
-      const finalInternalTitle = internalTitle.trim() || 'Untitled One-Pager';
+      const finalInternalTitle = 'Untitled One-Pager';
       if (!editorInstance || !user) {
         alert('Editor is not ready or user session is invalid. Please try again.');
         setIsSaving(false);
@@ -98,9 +98,9 @@ export default function CreateOnePagerPage() {
           entityType: 'SharedLink',
           baseOnePagerId: onePagerPK,
           ownerUserId: userPK,
-          recipientNameForDisplay: 'Public Link', // A sensible default
+          recipientNameForDisplay: 'Public Link',
           gsi2PK: onePagerPK,
-          gsi2SK: statusUpdatedAtISO, // Use same timestamp for sorting
+          gsi2SK: statusUpdatedAtISO,
         };
 
         const sharedLinkResult = await client.models.Entity.create(sharedLinkData as any);
@@ -114,10 +114,9 @@ export default function CreateOnePagerPage() {
 
         // Step 3: Redirect to the new public page if publishing
         if (isPublishing) {
-          router.push(`/${sharedLinkSlug}`);
-          // setIsSaving(false); // Navigation happens, component might unmount or state reset is less critical
+          router.push(`/edit/${onePagerUUID}`);
         } else {
-          alert('Draft saved successfully!'); // Consider using a toast notification here
+          router.push(`/edit/${onePagerUUID}`);
           setIsSaving(false);
           setCurrentSavingAction(null);
         }
@@ -128,7 +127,7 @@ export default function CreateOnePagerPage() {
         setCurrentSavingAction(null);
       }
     },
-    [editorInstance, user, router, internalTitle]
+    [editorInstance, user, router]
   ); // Added dependencies for useCallback
 
   const handleSaveDraft = () => {
@@ -137,8 +136,17 @@ export default function CreateOnePagerPage() {
       return;
     }
     if (user) {
-      executeSave(false); // Save as draft
+      executeSave(false);
     } else {
+      localStorage.setItem(
+        'pendingCreateOnePager',
+        JSON.stringify({
+          pendingAction: 'create',
+          contentBlocks: editorInstance.document,
+          saveIntent: 'draft',
+          returnTo: '/create',
+        })
+      );
       setSaveIntentAfterAuth('draft');
       setIsAuthDialogOpen(true);
     }
@@ -150,8 +158,17 @@ export default function CreateOnePagerPage() {
       return;
     }
     if (user) {
-      executeSave(true); // Save and publish
+      executeSave(true);
     } else {
+      localStorage.setItem(
+        'pendingCreateOnePager',
+        JSON.stringify({
+          pendingAction: 'create',
+          contentBlocks: editorInstance.document,
+          saveIntent: 'publish',
+          returnTo: '/create',
+        })
+      );
       setSaveIntentAfterAuth('publish');
       setIsAuthDialogOpen(true);
     }
@@ -173,10 +190,32 @@ export default function CreateOnePagerPage() {
     }
   }, [user, saveIntentAfterAuth, isAuthDialogOpen, editorInstance, executeSave]);
 
+  // useEffect to load from localStorage on mount
+  useEffect(() => {
+    const pendingDataString = localStorage.getItem('pendingCreateOnePager');
+    if (pendingDataString) {
+      try {
+        const pendingData = JSON.parse(pendingDataString);
+        if (pendingData.pendingAction === 'create') {
+          console.log('Found pending create data in localStorage:', pendingData);
+          if (pendingData.contentBlocks) {
+            setEditorContent(pendingData.contentBlocks);
+          }
+          if (user && pendingData.saveIntent) {
+            setSaveIntentAfterAuth(pendingData.saveIntent);
+          }
+          localStorage.removeItem('pendingCreateOnePager');
+        }
+      } catch (error) {
+        console.error('Error parsing pending create data from localStorage:', error);
+        localStorage.removeItem('pendingCreateOnePager');
+      }
+    }
+  }, [user]);
+
   const handleEditorReady = useCallback((editor: BlockNoteEditorType) => {
     setEditorInstance(editor);
-    setEditorContent(editor.document); // Set initial content for preview
-    // Subscribe to content changes for live preview
+    setEditorContent(editor.document);
     editor.onChange(() => {
       setEditorContent(editor.document);
     });
@@ -255,7 +294,7 @@ export default function CreateOnePagerPage() {
       {isAuthDialogOpen && (
         <Dialog open={isAuthDialogOpen} onOpenChange={setIsAuthDialogOpen}>
           <DialogContent className="sm:max-w-[425px] md:max-w-[550px] lg:max-w-[700px] p-0 overflow-y-auto max-h-[90vh]">
-            <AuthSignInDialog />
+            <AuthSignInDialog onAuthSuccess={() => setIsAuthDialogOpen(false)} />
           </DialogContent>
         </Dialog>
       )}

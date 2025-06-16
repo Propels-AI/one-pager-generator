@@ -1,14 +1,10 @@
 'use client';
 
 import React, { useEffect } from 'react';
-import { Amplify } from 'aws-amplify';
 import '@aws-amplify/ui-react/styles.css';
-import outputs from '@/amplify_outputs.json';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/components/providers/AuthProvider';
 import { AuthSignInDialog } from '@/components/ui/AuthSignInDialog';
-
-Amplify.configure(outputs, { ssr: true });
 
 export default function AuthPortalPage() {
   const router = useRouter();

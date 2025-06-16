@@ -134,9 +134,9 @@ export default function DashboardPage() {
     <div className="container mx-auto py-8 px-4 sm:px-6 lg:px-8">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8 gap-4">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-gray-900 dark:text-white">My One-Pagers</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-gray-900 dark:text-white">My Pages</h1>
           <p className="text-muted-foreground mt-1 sm:mt-2">
-            Manage your draft and published one-pagers, {user.signInDetails?.loginId || user.username}.
+            Manage your draft and published pages, {user.signInDetails?.loginId || user.username}.
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -145,7 +145,7 @@ export default function DashboardPage() {
           </Button>
           <Button asChild>
             <Link href="/editor">
-              <Plus className="h-4 w-4 mr-2" /> Create New
+              <Plus className="h-4 w-4 mr-2" /> Create Page
             </Link>
           </Button>
         </div>
@@ -164,12 +164,12 @@ export default function DashboardPage() {
         <TabsContent value="published" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>Published One-Pagers</CardTitle>
-              <CardDescription>Your live one-pagers that are publicly accessible.</CardDescription>
+              <CardTitle>Published Pages</CardTitle>
+              <CardDescription>Your live pages that are publicly accessible.</CardDescription>
             </CardHeader>
             <CardContent>
               {publishedOnePagers.length === 0 ? (
-                <p className="text-center text-muted-foreground py-4">No published one-pagers yet.</p>
+                <p className="text-center text-muted-foreground py-4">No published pages yet.</p>
               ) : (
                 <Table>
                   <TableHeader>
@@ -187,7 +187,7 @@ export default function DashboardPage() {
                         <TableRow key={pager.PK}>
                           <TableCell className="font-medium">
                             <Link href={`/editor/${pager.PK.split('#')[1]}`} className="hover:underline">
-                              {pager.internalTitle || 'Untitled One-Pager'}
+                              {pager.internalTitle || 'Untitled Page'}
                             </Link>
                           </TableCell>
                           <TableCell className="text-muted-foreground hidden md:table-cell">
@@ -266,13 +266,13 @@ export default function DashboardPage() {
         <TabsContent value="draft" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>Draft One-Pagers</CardTitle>
-              <CardDescription>Your work-in-progress one-pagers that haven't been published yet.</CardDescription>
+              <CardTitle>Draft Pages</CardTitle>
+              <CardDescription>Your work-in-progress pages that haven't been published yet.</CardDescription>
             </CardHeader>
             <CardContent>
               {draftOnePagers.length === 0 ? (
                 <p className="text-center text-muted-foreground py-4">
-                  No drafts yet. Start by creating a new one-pager!
+                  No drafts yet. Start by creating your first page!
                 </p>
               ) : (
                 <Table>
@@ -336,7 +336,7 @@ export default function DashboardPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
             <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete the one-pager and all associated data.
+              This action cannot be undone. This will permanently delete the page and all associated data.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

@@ -2,12 +2,13 @@
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { useAuth } from '@/components/providers/AuthProvider';
 import { useRouter, useParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { fetchOnePagerById } from '@/lib/services/entityService';
 import { useCreateOnePager, useUpdateOnePager } from '@/lib/hooks/useOnePagerMutations';
-import { Loader2, Eye, Edit3 } from 'lucide-react';
+import { Loader2, Eye, Edit3, Edit } from 'lucide-react';
 import { AuthSignInDialog } from '@/components/ui/AuthSignInDialog';
 import dynamic from 'next/dynamic';
 import type { CustomSchemaEditor as BlockNoteEditorType, PartialBlock } from '@/components/editor/BlockNoteEditor';
@@ -70,7 +71,8 @@ export default function EditorPage() {
   const [initialContent, setInitialContent] = useState<PartialBlock[] | undefined>(
     isNewDocument ? defaultContent : undefined
   );
-  const [internalTitle, setInternalTitle] = useState('');
+  const [internalTitle, setInternalTitle] = useState(isNewDocument ? 'Untitled One-Pager' : '');
+  const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [isAuthDialogOpen, setIsAuthDialogOpen] = useState(false);
   const [saveIntentAfterAuth, setSaveIntentAfterAuth] = useState<'draft' | 'publish' | null>(null);
   const [viewMode, setViewMode] = useState<'editor' | 'preview'>('editor');
@@ -96,27 +98,13 @@ export default function EditorPage() {
     }
   }, [existingOnePager]);
 
-  const extractTitleFromEditor = useCallback(() => {
-    const editorBlocks = editorInstance?.document || [];
-    const firstHeading = editorBlocks.find(
-      (block: any) => block.type === 'heading' && block.content && block.content.length > 0
-    );
-
-    let titleFromEditor = '';
-    if (firstHeading && Array.isArray(firstHeading.content)) {
-      titleFromEditor = firstHeading.content.map((content: any) => content.text || '').join('');
-    }
-
-    return titleFromEditor.trim() || internalTitle.trim() || 'Untitled One-Pager';
-  }, [editorInstance, internalTitle]);
-
   const executeSave = useCallback(
     async (isPublishing: boolean) => {
       if (!editorInstance || !user) {
         return alert('Editor is not ready or user session is invalid. Please try again.');
       }
 
-      const finalInternalTitle = extractTitleFromEditor();
+      const finalInternalTitle = internalTitle.trim() || 'Untitled One-Pager';
       const contentBlocks = editorInstance.document || [];
       const status = isPublishing ? 'PUBLISHED' : 'DRAFT';
 
@@ -136,7 +124,7 @@ export default function EditorPage() {
         });
       }
     },
-    [editorInstance, user, isNewDocument, onePagerPKToFetch, extractTitleFromEditor, createMutation, updateMutation]
+    [editorInstance, user, isNewDocument, onePagerPKToFetch, internalTitle, createMutation, updateMutation]
   );
 
   const handleSaveDraft = () => {
@@ -154,6 +142,7 @@ export default function EditorPage() {
           JSON.stringify({
             pendingAction: 'create',
             contentBlocks: editorInstance.document,
+            internalTitle: internalTitle,
             saveIntent: 'draft',
             returnTo: '/editor',
           })
@@ -177,6 +166,7 @@ export default function EditorPage() {
           JSON.stringify({
             pendingAction: 'create',
             contentBlocks: editorInstance.document,
+            internalTitle: internalTitle,
             saveIntent: 'publish',
             returnTo: '/editor',
           })
@@ -206,6 +196,9 @@ export default function EditorPage() {
             const restoredContent = pendingData.contentBlocks.length > 0 ? pendingData.contentBlocks : defaultContent;
             setEditorContent(restoredContent);
           }
+          if (pendingData.internalTitle) {
+            setInternalTitle(pendingData.internalTitle);
+          }
           if (user && pendingData.saveIntent) {
             setSaveIntentAfterAuth(pendingData.saveIntent);
           }
@@ -225,6 +218,28 @@ export default function EditorPage() {
     });
   }, []);
 
+  const handleTitleEdit = () => {
+    setIsEditingTitle(true);
+  };
+
+  const handleTitleSave = (newTitle: string) => {
+    setInternalTitle(newTitle.trim() || 'Untitled One-Pager');
+    setIsEditingTitle(false);
+    // Auto-save the title change if user is authenticated and document exists
+    if (user && !isNewDocument && editorInstance) {
+      // Trigger save with current publish status
+      const isCurrentlyPublished = existingOnePager?.status === 'PUBLISHED';
+      executeSave(isCurrentlyPublished);
+    }
+  };
+
+  const handleTitleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' || e.key === 'Escape') {
+      e.preventDefault();
+      handleTitleSave((e.target as HTMLInputElement).value);
+    }
+  };
+
   if (isLoadingOnePager) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -238,20 +253,50 @@ export default function EditorPage() {
     <div className="min-h-screen flex flex-col">
       <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="container flex h-14 items-center max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="mr-auto flex items-center">
-            <h1 className="font-semibold text-lg">
-              {isNewDocument ? 'Create One-Pager' : 'Edit One-Pager'} (
-              {viewMode === 'editor' ? 'Editing' : 'Previewing'})
-            </h1>
+          <div className="mr-auto flex items-center gap-2">
+            {isEditingTitle ? (
+              <Input
+                autoFocus
+                value={internalTitle}
+                onChange={(e) => setInternalTitle(e.target.value)}
+                onBlur={(e) => handleTitleSave(e.target.value)}
+                onKeyDown={handleTitleKeyDown}
+                className="font-semibold text-lg border-none shadow-none p-0 h-auto focus-visible:ring-0 bg-transparent min-w-[200px] outline-none"
+                placeholder="Untitled One-Pager"
+                style={{
+                  fontSize: 'inherit',
+                  lineHeight: 'inherit',
+                  fontWeight: 'inherit',
+                }}
+              />
+            ) : (
+              <div className="flex items-center gap-2 cursor-pointer group" onDoubleClick={handleTitleEdit}>
+                <h1 className="font-semibold text-lg">{internalTitle}</h1>
+                <Edit
+                  className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity"
+                  onClick={handleTitleEdit}
+                />
+              </div>
+            )}
           </div>
           <div className="flex flex-1 items-center justify-end space-x-2">
             <Button
               onClick={() => setViewMode(viewMode === 'editor' ? 'preview' : 'editor')}
               variant="outline"
-              size="icon"
-              aria-label={viewMode === 'editor' ? 'Show Preview' : 'Show Editor'}
+              aria-label={viewMode === 'editor' ? 'Switch to Preview' : 'Switch to Editor'}
+              className="gap-2"
             >
-              {viewMode === 'editor' ? <Eye className="h-4 w-4" /> : <Edit3 className="h-4 w-4" />}
+              {viewMode === 'editor' ? (
+                <>
+                  <Eye className="h-4 w-4" />
+                  Preview
+                </>
+              ) : (
+                <>
+                  <Edit3 className="h-4 w-4" />
+                  Edit
+                </>
+              )}
             </Button>
             <Button onClick={handleSaveDraft} disabled={isSaving || !editorInstance} variant="outline">
               {isSaving && currentSavingAction ? (

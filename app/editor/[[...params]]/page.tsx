@@ -1,14 +1,14 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useAuth } from '@/components/providers/AuthProvider';
 import { useRouter, useParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { fetchOnePagerById } from '@/lib/services/entityService';
-import { useCreateOnePager, useUpdateOnePager } from '@/lib/hooks/useOnePagerMutations';
-import { Loader2, Eye, Edit3, Edit } from 'lucide-react';
+import { useSaveDraft, useSaveAndPublish } from '@/lib/hooks/useOnePagerMutations';
+import { Loader2, Eye, Edit3, Edit, Save, Globe } from 'lucide-react';
 import { AuthSignInDialog } from '@/components/ui/AuthSignInDialog';
 import dynamic from 'next/dynamic';
 import type { CustomSchemaEditor as BlockNoteEditorType, PartialBlock } from '@/components/editor/BlockNoteEditor';
@@ -51,9 +51,9 @@ export default function EditorPage() {
     },
   ];
 
-  // TanStack Query mutations
-  const createMutation = useCreateOnePager();
-  const updateMutation = useUpdateOnePager();
+  // Action-specific mutations
+  const saveDraftMutation = useSaveDraft();
+  const saveAndPublishMutation = useSaveAndPublish();
 
   const { data: existingOnePager, isLoading: isLoadingOnePager } = useQuery({
     queryKey: ['onePager', documentId || 'new'],
@@ -77,10 +77,6 @@ export default function EditorPage() {
   const [saveIntentAfterAuth, setSaveIntentAfterAuth] = useState<'draft' | 'publish' | null>(null);
   const [viewMode, setViewMode] = useState<'editor' | 'preview'>('editor');
 
-  // Computed loading state from mutations
-  const isSaving = createMutation.isPending || updateMutation.isPending;
-  const currentSavingAction = createMutation.isPending ? 'creating' : updateMutation.isPending ? 'updating' : null;
-
   useEffect(() => {
     if (existingOnePager) {
       setInternalTitle(existingOnePager.internalTitle || 'Untitled One-Pager');
@@ -98,34 +94,39 @@ export default function EditorPage() {
     }
   }, [existingOnePager]);
 
-  const executeSave = useCallback(
-    async (isPublishing: boolean) => {
-      if (!editorInstance || !user) {
-        return alert('Editor is not ready or user session is invalid. Please try again.');
-      }
+  const executeSaveDraft = useCallback(() => {
+    if (!editorInstance || !user) {
+      return alert('Editor is not ready or user session is invalid. Please try again.');
+    }
 
-      const finalInternalTitle = internalTitle.trim() || 'Untitled One-Pager';
-      const contentBlocks = editorInstance.document || [];
-      const status = isPublishing ? 'PUBLISHED' : 'DRAFT';
+    const finalInternalTitle = internalTitle.trim() || 'Untitled One-Pager';
+    const contentBlocks = editorInstance.document || [];
 
-      if (isNewDocument) {
-        createMutation.mutate({
-          ownerUserId: user.userId,
-          internalTitle: finalInternalTitle,
-          status,
-          contentBlocks,
-        });
-      } else {
-        updateMutation.mutate({
-          PK: onePagerPKToFetch,
-          internalTitle: finalInternalTitle,
-          status,
-          contentBlocks,
-        });
-      }
-    },
-    [editorInstance, user, isNewDocument, onePagerPKToFetch, internalTitle, createMutation, updateMutation]
-  );
+    saveDraftMutation.mutate({
+      ownerUserId: isNewDocument ? user.userId : undefined,
+      PK: isNewDocument ? undefined : onePagerPKToFetch,
+      internalTitle: finalInternalTitle,
+      contentBlocks,
+      isNewDocument,
+    });
+  }, [editorInstance, user, internalTitle, isNewDocument, onePagerPKToFetch, saveDraftMutation]);
+
+  const executeSaveAndPublish = useCallback(() => {
+    if (!editorInstance || !user) {
+      return alert('Editor is not ready or user session is invalid. Please try again.');
+    }
+
+    const finalInternalTitle = internalTitle.trim() || 'Untitled One-Pager';
+    const contentBlocks = editorInstance.document || [];
+
+    saveAndPublishMutation.mutate({
+      ownerUserId: isNewDocument ? user.userId : undefined,
+      PK: isNewDocument ? undefined : onePagerPKToFetch,
+      internalTitle: finalInternalTitle,
+      contentBlocks,
+      isNewDocument,
+    });
+  }, [editorInstance, user, internalTitle, isNewDocument, onePagerPKToFetch, saveAndPublishMutation]);
 
   const handleSaveDraft = () => {
     if (!editorInstance) {
@@ -133,7 +134,7 @@ export default function EditorPage() {
     }
 
     if (user) {
-      executeSave(false);
+      executeSaveDraft();
     } else {
       // Store state for auth wall (new document flow)
       if (isNewDocument) {
@@ -157,7 +158,7 @@ export default function EditorPage() {
     if (!editorInstance) return alert('Editor not available.');
 
     if (user) {
-      executeSave(true);
+      executeSaveAndPublish();
     } else {
       // Store state for auth wall (new document flow)
       if (isNewDocument) {
@@ -179,10 +180,14 @@ export default function EditorPage() {
 
   useEffect(() => {
     if (user && saveIntentAfterAuth && !isAuthDialogOpen && editorInstance) {
-      executeSave(saveIntentAfterAuth === 'publish');
+      if (saveIntentAfterAuth === 'publish') {
+        executeSaveAndPublish();
+      } else {
+        executeSaveDraft();
+      }
       setSaveIntentAfterAuth(null);
     }
-  }, [user, saveIntentAfterAuth, isAuthDialogOpen, editorInstance, executeSave]);
+  }, [user, saveIntentAfterAuth, isAuthDialogOpen, editorInstance, executeSaveDraft, executeSaveAndPublish]);
 
   // Load pending data from localStorage on mount (for auth wall flow)
   useEffect(() => {
@@ -229,7 +234,11 @@ export default function EditorPage() {
     if (user && !isNewDocument && editorInstance) {
       // Trigger save with current publish status
       const isCurrentlyPublished = existingOnePager?.status === 'PUBLISHED';
-      executeSave(isCurrentlyPublished);
+      if (isCurrentlyPublished) {
+        executeSaveAndPublish();
+      } else {
+        executeSaveDraft();
+      }
     }
   };
 
@@ -298,22 +307,36 @@ export default function EditorPage() {
                 </>
               )}
             </Button>
-            <Button onClick={handleSaveDraft} disabled={isSaving || !editorInstance} variant="outline">
-              {isSaving && currentSavingAction ? (
+            <Button
+              onClick={handleSaveDraft}
+              disabled={saveDraftMutation.isPending || !editorInstance}
+              variant="outline"
+              className="gap-2"
+            >
+              {saveDraftMutation.isPending ? (
                 <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Saving...
+                  <Loader2 className="h-4 w-4 animate-spin" /> Saving...
                 </>
               ) : (
-                'Save Draft'
+                <>
+                  <Save className="h-4 w-4" /> Save
+                </>
               )}
             </Button>
-            <Button onClick={handleSaveAndPublish} disabled={isSaving || !editorInstance} variant="default">
-              {isSaving && currentSavingAction ? (
+            <Button
+              onClick={handleSaveAndPublish}
+              disabled={saveAndPublishMutation.isPending || !editorInstance}
+              variant="default"
+              className="gap-2"
+            >
+              {saveAndPublishMutation.isPending ? (
                 <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" /> {isNewDocument ? 'Publishing...' : 'Publishing...'}
+                  <Loader2 className="h-4 w-4 animate-spin" /> Publishing...
                 </>
               ) : (
-                'Save and Publish'
+                <>
+                  <Globe className="h-4 w-4" /> Publish
+                </>
               )}
             </Button>
           </div>

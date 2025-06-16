@@ -159,3 +159,110 @@ export function usePublishDraft() {
     },
   });
 }
+
+// Action-specific mutation hooks for editor
+interface SaveDraftParams {
+  ownerUserId?: string;
+  PK?: string;
+  internalTitle: string;
+  contentBlocks: any[];
+  isNewDocument: boolean;
+}
+
+interface SaveAndPublishParams {
+  ownerUserId?: string;
+  PK?: string;
+  internalTitle: string;
+  contentBlocks: any[];
+  isNewDocument: boolean;
+}
+
+export function useSaveDraft() {
+  const createMutation = useCreateOnePager();
+  const updateMutation = useUpdateOnePager();
+  const router = useRouter();
+
+  return useMutation({
+    mutationFn: async ({ ownerUserId, PK, internalTitle, contentBlocks, isNewDocument }: SaveDraftParams) => {
+      if (isNewDocument && ownerUserId) {
+        return createMutation.mutateAsync({
+          ownerUserId,
+          internalTitle,
+          status: 'DRAFT',
+          contentBlocks,
+        });
+      } else if (PK) {
+        return updateMutation.mutateAsync({
+          PK,
+          internalTitle,
+          status: 'DRAFT',
+          contentBlocks,
+        });
+      }
+      throw new Error('Invalid parameters for save draft');
+    },
+    onSuccess: (data, variables) => {
+      toast.success('Draft Saved', {
+        description: `"${variables.internalTitle}" saved successfully.`,
+      });
+
+      // Navigate to editor with document ID if it's a new document
+      if (variables.isNewDocument && data && 'onePager' in data && data.onePager?.PK) {
+        const uuid = data.onePager.PK.replace('ONEPAGER#', '');
+        router.push(`/editor/${uuid}`);
+      }
+    },
+    onError: (error: Error) => {
+      console.error('Save draft error:', error);
+      toast.error('Error Saving Draft', {
+        description: error.message || 'An unexpected error occurred while saving the draft.',
+      });
+    },
+  });
+}
+
+export function useSaveAndPublish() {
+  const createMutation = useCreateOnePager();
+  const updateMutation = useUpdateOnePager();
+  const router = useRouter();
+
+  return useMutation({
+    mutationFn: async ({ ownerUserId, PK, internalTitle, contentBlocks, isNewDocument }: SaveAndPublishParams) => {
+      if (isNewDocument && ownerUserId) {
+        return createMutation.mutateAsync({
+          ownerUserId,
+          internalTitle,
+          status: 'PUBLISHED',
+          contentBlocks,
+        });
+      } else if (PK) {
+        return updateMutation.mutateAsync({
+          PK,
+          internalTitle,
+          status: 'PUBLISHED',
+          contentBlocks,
+        });
+      }
+      throw new Error('Invalid parameters for publish');
+    },
+    onSuccess: (data, variables) => {
+      toast.success('One-Pager Published', {
+        description: `"${variables.internalTitle}" published successfully.`,
+      });
+
+      // Navigate to public page if published
+      if (data && 'publicSlug' in data && data.publicSlug) {
+        router.push(`/${data.publicSlug}`);
+      } else if (variables.isNewDocument && data && 'onePager' in data && data.onePager?.PK) {
+        const uuid = data.onePager.PK.replace('ONEPAGER#', '');
+        router.push(`/editor/${uuid}`);
+      }
+    },
+    onError: (error: Error) => {
+      console.error('Publish error:', error);
+      toast.error('Error Publishing', {
+        description: error.message || 'An unexpected error occurred while publishing.',
+      });
+    },
+  });
+}

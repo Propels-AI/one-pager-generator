@@ -22,6 +22,27 @@ export type OnePagerFromSchema = {
   publicSlug?: string | null;
 };
 
+// Input types for create/update operations
+export type CreateOnePagerInput = {
+  ownerUserId: string;
+  internalTitle: string;
+  status: 'PUBLISHED' | 'DRAFT';
+  contentBlocks: any[]; // Editor document array
+  templateId?: string;
+};
+
+export type UpdateOnePagerInput = {
+  PK: string;
+  internalTitle: string;
+  status: 'PUBLISHED' | 'DRAFT';
+  contentBlocks: any[]; // Editor document array
+};
+
+export type CreateOnePagerResult = {
+  onePager: OnePagerFromSchema;
+  publicSlug?: string;
+};
+
 export async function fetchOnePagerById(id: string): Promise<OnePagerFromSchema | null> {
   try {
     const { data: entity, errors } = await client.models.Entity.get({
@@ -258,4 +279,108 @@ export async function publishDraft(onePager: OnePagerFromSchema): Promise<Schema
   }
 
   return updatedPager === null ? undefined : updatedPager;
+}
+
+export async function createOnePager(input: CreateOnePagerInput): Promise<CreateOnePagerResult> {
+  const { ownerUserId, internalTitle, status, contentBlocks, templateId = 'default' } = input;
+
+  if (!ownerUserId || !internalTitle) {
+    throw new Error('ownerUserId and internalTitle are required for creating a OnePager.');
+  }
+
+  const onePagerUUID = nanoid();
+  const onePagerPK = `ONEPAGER#${onePagerUUID}`;
+  const userPK = `USER#${ownerUserId}`;
+  const currentDateTime = new Date();
+  const statusUpdatedAtISO = currentDateTime.toISOString();
+  const serializedContent = JSON.stringify(contentBlocks || []);
+
+  try {
+    // 1. Create the OnePager entity
+    const { data: onePagerResult, errors: onePagerErrors } = await client.models.Entity.create({
+      PK: onePagerPK,
+      SK: 'METADATA',
+      entityType: 'OnePager',
+      ownerUserId: userPK,
+      internalTitle,
+      status,
+      statusUpdatedAt: statusUpdatedAtISO,
+      templateId,
+      contentBlocks: serializedContent,
+      gsi1PK: userPK,
+      gsi1SK: `${status}#${statusUpdatedAtISO}`,
+    });
+
+    if (onePagerErrors) {
+      throw new Error(onePagerErrors.map((e: any) => e.message).join(', '));
+    }
+
+    if (!onePagerResult) {
+      throw new Error('Failed to create OnePager - no data returned');
+    }
+
+    // 2. Create the default SharedLink (public link)
+    const sharedLinkSlug = nanoid(6);
+    const { errors: sharedLinkErrors } = await client.models.Entity.create({
+      PK: `SLINK#${sharedLinkSlug}`,
+      SK: 'METADATA',
+      entityType: 'SharedLink',
+      baseOnePagerId: onePagerPK,
+      ownerUserId: userPK,
+      recipientNameForDisplay: 'Public Link',
+      gsi2PK: onePagerPK,
+      gsi2SK: statusUpdatedAtISO,
+    });
+
+    if (sharedLinkErrors) {
+      console.warn(
+        `OnePager created but failed to create share link: ${sharedLinkErrors.map((e: any) => e.message).join(', ')}`
+      );
+    }
+
+    return {
+      onePager: onePagerResult as OnePagerFromSchema,
+      publicSlug: sharedLinkSlug,
+    };
+  } catch (error) {
+    console.error('Error creating OnePager:', error);
+    throw error;
+  }
+}
+
+export async function updateOnePager(input: UpdateOnePagerInput): Promise<OnePagerFromSchema> {
+  const { PK, internalTitle, status, contentBlocks } = input;
+
+  if (!PK || !internalTitle) {
+    throw new Error('PK and internalTitle are required for updating a OnePager.');
+  }
+
+  const currentDateTime = new Date();
+  const statusUpdatedAtISO = currentDateTime.toISOString();
+  const serializedContent = JSON.stringify(contentBlocks || []);
+
+  try {
+    const { data: result, errors } = await client.models.Entity.update({
+      PK,
+      SK: 'METADATA',
+      internalTitle,
+      contentBlocks: serializedContent,
+      status,
+      statusUpdatedAt: statusUpdatedAtISO,
+      gsi1SK: `${status}#${statusUpdatedAtISO}`,
+    });
+
+    if (errors) {
+      throw new Error(errors.map((e: any) => e.message).join(', '));
+    }
+
+    if (!result) {
+      throw new Error('Failed to update OnePager - no data returned');
+    }
+
+    return result as OnePagerFromSchema;
+  } catch (error) {
+    console.error('Error updating OnePager:', error);
+    throw error;
+  }
 }

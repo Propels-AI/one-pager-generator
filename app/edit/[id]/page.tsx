@@ -4,17 +4,14 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/components/providers/AuthProvider';
 import { useRouter, useParams } from 'next/navigation';
-import { generateClient } from 'aws-amplify/data';
-import type { Schema } from '@/amplify/data/resource';
 import { useQuery } from '@tanstack/react-query';
-import { fetchOnePagerById, OnePagerFromSchema } from '@/lib/services/entityService';
+import { fetchOnePagerById } from '@/lib/services/entityService';
+import { useCreateOnePager, useUpdateOnePager } from '@/lib/hooks/useOnePagerMutations';
 import { Loader2, Eye, Edit3 } from 'lucide-react';
 import { AuthSignInDialog } from '@/components/ui/AuthSignInDialog';
 import dynamic from 'next/dynamic';
 import type { CustomSchemaEditor as BlockNoteEditorType, PartialBlock } from '@/components/editor/BlockNoteEditor';
 import { customSchema } from '@/components/editor/BlockNoteEditor';
-import { v4 as uuidv4 } from 'uuid';
-import { nanoid } from 'nanoid';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 
 const BlockNoteEditor = dynamic(() => import('@/components/editor/BlockNoteEditor'), {
@@ -35,15 +32,17 @@ const Preview = dynamic(() => import('@/components/preview').then((mod) => mod.P
   ),
 });
 
-const client = generateClient<Schema>();
-
 export default function EditOnePagerPage() {
   const { user } = useAuth();
   const router = useRouter();
   const params = useParams();
-  const idFromUrl = params.id ? decodeURIComponent(params.id as string) : ''; // 'new' or UUID
+  const idFromUrl = params.id ? decodeURIComponent(params.id as string) : '';
   const isCreateMode = idFromUrl === 'new';
-  const onePagerPKToFetch = isCreateMode || !idFromUrl ? '' : `ONEPAGER#${idFromUrl}`; // Construct the full PK for database interactions
+  const onePagerPKToFetch = isCreateMode || !idFromUrl ? '' : `ONEPAGER#${idFromUrl}`;
+
+  // TanStack Query mutations
+  const createMutation = useCreateOnePager();
+  const updateMutation = useUpdateOnePager();
 
   const { data: existingOnePager, isLoading: isLoadingOnePager } = useQuery({
     queryKey: ['onePager', idFromUrl],
@@ -60,11 +59,13 @@ export default function EditOnePagerPage() {
   const [editorContent, setEditorContent] = useState<PartialBlock[] | undefined>();
   const [initialContent, setInitialContent] = useState<PartialBlock[] | undefined>(isCreateMode ? [] : undefined);
   const [internalTitle, setInternalTitle] = useState('');
-  const [isSaving, setIsSaving] = useState(false);
   const [isAuthDialogOpen, setIsAuthDialogOpen] = useState(false);
   const [saveIntentAfterAuth, setSaveIntentAfterAuth] = useState<'draft' | 'publish' | null>(null);
   const [viewMode, setViewMode] = useState<'editor' | 'preview'>('editor');
-  const [currentSavingAction, setCurrentSavingAction] = useState<'draft' | 'publish' | null>(null);
+
+  // Computed loading state from mutations
+  const isSaving = createMutation.isPending || updateMutation.isPending;
+  const currentSavingAction = createMutation.isPending ? 'creating' : updateMutation.isPending ? 'updating' : null;
 
   useEffect(() => {
     if (existingOnePager) {
@@ -81,105 +82,57 @@ export default function EditOnePagerPage() {
     }
   }, [existingOnePager]);
 
+  const extractTitleFromEditor = useCallback(() => {
+    const editorBlocks = editorInstance?.document || [];
+    const firstHeading = editorBlocks.find(
+      (block: any) => block.type === 'heading' && block.content && block.content.length > 0
+    );
+
+    let titleFromEditor = '';
+    if (firstHeading && Array.isArray(firstHeading.content)) {
+      titleFromEditor = firstHeading.content.map((content: any) => content.text || '').join('');
+    }
+
+    return titleFromEditor.trim() || internalTitle.trim() || 'Untitled One-Pager';
+  }, [editorInstance, internalTitle]);
+
   const executeSave = useCallback(
     async (isPublishing: boolean) => {
-      setCurrentSavingAction(isPublishing ? 'publish' : 'draft');
-      setIsSaving(true);
-      const finalInternalTitle = internalTitle.trim() || 'Untitled One-Pager';
       if (!editorInstance || !user) {
-        alert('Editor is not ready or user session is invalid. Please try again.');
-        setIsSaving(false);
-        return;
+        return alert('Editor is not ready or user session is invalid. Please try again.');
       }
 
-      const cognitoUserId = user.userId;
-      const userPK = `USER#${cognitoUserId}`;
-      const currentDateTime = new Date();
-      const currentStatus = isPublishing ? 'PUBLISHED' : 'DRAFT';
-      const statusUpdatedAtISO = currentDateTime.toISOString();
-      const contentBlocksJSON = JSON.stringify(editorInstance.document || []);
+      const finalInternalTitle = extractTitleFromEditor();
+      const contentBlocks = editorInstance.document || [];
+      const status = isPublishing ? 'PUBLISHED' : 'DRAFT';
 
-      try {
-        if (isCreateMode) {
-          const onePagerUUID = uuidv4();
-          const onePagerPK = `ONEPAGER#${onePagerUUID}`;
-
-          const onePagerData = {
-            PK: onePagerPK,
-            SK: 'METADATA',
-            entityType: 'OnePager' as const,
-            ownerUserId: userPK,
-            internalTitle: finalInternalTitle,
-            status: currentStatus,
-            statusUpdatedAt: statusUpdatedAtISO,
-            templateId: 'default',
-            contentBlocks: contentBlocksJSON,
-            gsi1PK: userPK,
-            gsi1SK: `${currentStatus}#${statusUpdatedAtISO}`,
-          };
-
-          const onePagerResult = await client.models.Entity.create(onePagerData as any);
-          if (onePagerResult.errors) throw new Error(onePagerResult.errors.map((e: any) => e.message).join(', '));
-
-          const sharedLinkSlug = nanoid(6);
-          const sharedLinkData = {
-            PK: `SLINK#${sharedLinkSlug}`,
-            SK: 'METADATA',
-            entityType: 'SharedLink' as const,
-            baseOnePagerId: onePagerPK,
-            ownerUserId: userPK,
-            recipientNameForDisplay: 'Public Link',
-            gsi2PK: onePagerPK,
-            gsi2SK: statusUpdatedAtISO,
-          };
-
-          const sharedLinkResult = await client.models.Entity.create(sharedLinkData as any);
-          if (sharedLinkResult.errors)
-            throw new Error(
-              `OnePager saved, but failed to create share link: ${sharedLinkResult.errors.map((e: any) => e.message).join(', ')}`
-            );
-
-          if (isPublishing) {
-            router.push(`/${sharedLinkSlug}`);
-          } else {
-            alert('Draft saved successfully!');
-            router.push(`/edit/${onePagerUUID}`);
-          }
-        } else {
-          const updateData = {
-            internalTitle: finalInternalTitle,
-            contentBlocks: contentBlocksJSON,
-            status: currentStatus,
-            statusUpdatedAt: statusUpdatedAtISO,
-            gsi1SK: `${currentStatus}#${statusUpdatedAtISO}`,
-          };
-
-          const result = await client.models.Entity.update(
-            { PK: onePagerPKToFetch, SK: 'METADATA' },
-            updateData as any
-          );
-          if (result.errors) throw new Error(result.errors.map((e: any) => e.message).join(', '));
-
-          alert(`One-pager ${isPublishing ? 'published' : 'updated'} successfully!`);
-          if (isPublishing) {
-            router.push('/dashboard');
-          }
-        }
-      } catch (e: any) {
-        console.error(`Error saving OnePager:`, e);
-        alert(`An unexpected error occurred: ${e.message}`);
-      } finally {
-        setIsSaving(false);
-        setCurrentSavingAction(null);
+      if (isCreateMode) {
+        createMutation.mutate({
+          ownerUserId: user.userId,
+          internalTitle: finalInternalTitle,
+          status,
+          contentBlocks,
+        });
+      } else {
+        updateMutation.mutate({
+          PK: onePagerPKToFetch,
+          internalTitle: finalInternalTitle,
+          status,
+          contentBlocks,
+        });
       }
     },
-    [editorInstance, user, router, internalTitle, isCreateMode, onePagerPKToFetch]
+    [editorInstance, user, isCreateMode, onePagerPKToFetch, extractTitleFromEditor, createMutation, updateMutation]
   );
 
   const handleSaveDraft = () => {
-    if (!editorInstance) return alert('Editor not available.');
-    if (user) executeSave(false);
-    else {
+    if (!editorInstance) {
+      return alert('Editor not available.');
+    }
+
+    if (user) {
+      executeSave(false);
+    } else {
       setSaveIntentAfterAuth('draft');
       setIsAuthDialogOpen(true);
     }
@@ -237,7 +190,7 @@ export default function EditOnePagerPage() {
               {viewMode === 'editor' ? <Eye className="h-4 w-4" /> : <Edit3 className="h-4 w-4" />}
             </Button>
             <Button onClick={handleSaveDraft} disabled={isSaving || !editorInstance} variant="outline">
-              {isSaving && currentSavingAction === 'draft' ? (
+              {isSaving && currentSavingAction ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Saving...
                 </>
@@ -246,9 +199,9 @@ export default function EditOnePagerPage() {
               )}
             </Button>
             <Button onClick={handleSaveAndPublish} disabled={isSaving || !editorInstance} variant="default">
-              {isSaving && currentSavingAction === 'publish' ? (
+              {isSaving && currentSavingAction ? (
                 <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Publishing...
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" /> {isCreateMode ? 'Publishing...' : 'Publishing...'}
                 </>
               ) : (
                 'Save and Publish'

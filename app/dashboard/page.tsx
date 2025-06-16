@@ -20,8 +20,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 import { useAuth } from '@/components/providers/AuthProvider';
 import { useRouter } from 'next/navigation';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { fetchUserOnePagers, deleteOnePager, publishDraft, type OnePagerFromSchema as OnePagerEntity } from '@/lib/services/entityService';
+import { useQuery } from '@tanstack/react-query';
+import { fetchUserOnePagers, type OnePagerFromSchema as OnePagerEntity } from '@/lib/services/entityService';
+import { useDeleteOnePager, usePublishDraft } from '@/lib/hooks/useOnePagerMutations';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -29,16 +30,11 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { generateClient } from 'aws-amplify/data';
-import type { Schema } from '@/amplify/data/resource';
-
-const client = generateClient<Schema>();
 
 export default function DashboardPage() {
   const { user, isLoading: authIsLoading, handleSignOut: amplifySignOut } = useAuth();
   const router = useRouter();
 
-  const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState('published');
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [onePagerToDelete, setOnePagerToDelete] = useState<string | null>(null);
@@ -93,17 +89,9 @@ export default function DashboardPage() {
     return typeof window !== 'undefined' ? `${window.location.origin}/${slug}` : `/${slug}`;
   };
 
-  // Placeholder for delete mutation - implement actual deletion logic
-  const deleteOnePagerMutation = useMutation({
-    mutationFn: (onePagerPk: string) => deleteOnePager(onePagerPk),
-    onSuccess: (data) => {
-      toast.success('One-Pager Deleted', { description: `Successfully deleted one-pager ${data.pk}.` });
-      queryClient.invalidateQueries({ queryKey: ['allOnePagers', ownerUserId] });
-    },
-    onError: (error: Error) => {
-      toast.error('Error Deleting', { description: error.message });
-    },
-  });
+  // Use TanStack Query hooks for mutations
+  const deleteOnePagerMutation = useDeleteOnePager();
+  const publishDraftMutation = usePublishDraft();
 
   const handleDelete = (pk: string) => {
     setOnePagerToDelete(pk);
@@ -118,22 +106,12 @@ export default function DashboardPage() {
     setOnePagerToDelete(null);
   };
 
-  // Placeholder for publish mutation
-  const publishDraftMutation = useMutation({
-    mutationFn: (onePager: OnePagerEntity) => publishDraft(onePager),
-    onSuccess: (data) => {
-      // data can be undefined if the service function returns undefined (e.g. on null from DB)
-      toast.success('Draft Published', { description: `Successfully published ${data?.internalTitle || data?.PK || 'one-pager'}.` });
-      queryClient.invalidateQueries({ queryKey: ['allOnePagers', ownerUserId] });
-      setActiveTab('published'); // Switch to published tab
-    },
-    onError: (error: Error) => {
-      toast.error('Error Publishing', { description: error.message });
-    },
-  });
-
   const handlePublish = (pager: OnePagerEntity) => {
-    publishDraftMutation.mutate(pager);
+    publishDraftMutation.mutate(pager, {
+      onSuccess: () => {
+        setActiveTab('published'); // Switch to published tab
+      },
+    });
   };
 
   if (authIsLoading || (ownerUserId && onePagersIsLoading)) {

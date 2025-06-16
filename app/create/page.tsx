@@ -4,15 +4,12 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/components/providers/AuthProvider';
 import { useRouter } from 'next/navigation';
-import { generateClient } from 'aws-amplify/data';
-import type { Schema } from '@/amplify/data/resource';
+import { useCreateOnePager } from '@/lib/hooks/useOnePagerMutations';
 import { Loader2, Eye, Edit3 } from 'lucide-react';
 import { AuthSignInDialog } from '@/components/ui/AuthSignInDialog';
 import dynamic from 'next/dynamic';
 import type { CustomSchemaEditor as BlockNoteEditorType, PartialBlock } from '@/components/editor/BlockNoteEditor';
 import { customSchema } from '@/components/editor/BlockNoteEditor';
-import { v4 as uuidv4 } from 'uuid';
-import { nanoid } from 'nanoid';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 
 const BlockNoteEditor = dynamic(() => import('@/components/editor/BlockNoteEditor'), {
@@ -33,102 +30,57 @@ const Preview = dynamic(() => import('@/components/preview').then((mod) => mod.P
   ),
 });
 
-const client = generateClient<Schema>();
-
 export default function CreateOnePagerPage() {
   const { user } = useAuth();
   const router = useRouter();
+  const createMutation = useCreateOnePager();
+
   const [editorInstance, setEditorInstance] = useState<BlockNoteEditorType | null>(null);
   const [editorContent, setEditorContent] = useState<PartialBlock<typeof customSchema.blockSchema>[] | undefined>(
     undefined
   );
 
-  const [isSaving, setIsSaving] = useState(false);
   const [isAuthDialogOpen, setIsAuthDialogOpen] = useState(false);
   const [saveIntentAfterAuth, setSaveIntentAfterAuth] = useState<'draft' | 'publish' | null>(null);
   const [viewMode, setViewMode] = useState<'editor' | 'preview'>('editor');
-  const [currentSavingAction, setCurrentSavingAction] = useState<'draft' | 'publish' | null>(null);
+
+  // Computed loading state from mutation
+  const isSaving = createMutation.isPending;
+  const currentSavingAction = createMutation.isPending ? 'creating' : null;
+
+  const extractTitleFromEditor = useCallback(() => {
+    const editorBlocks = editorInstance?.document || [];
+    const firstHeading = editorBlocks.find(
+      (block: any) => block.type === 'heading' && block.content && block.content.length > 0
+    );
+
+    let titleFromEditor = '';
+    if (firstHeading && Array.isArray(firstHeading.content)) {
+      titleFromEditor = firstHeading.content.map((content: any) => content.text || '').join('');
+    }
+
+    return titleFromEditor.trim() || 'Untitled One-Pager';
+  }, [editorInstance]);
 
   const executeSave = useCallback(
-    async (isPublishing: boolean) => {
-      setCurrentSavingAction(isPublishing ? 'publish' : 'draft');
-      setIsSaving(true);
-      const finalInternalTitle = 'Untitled One-Pager';
+    (isPublishing: boolean) => {
       if (!editorInstance || !user) {
-        alert('Editor is not ready or user session is invalid. Please try again.');
-        setIsSaving(false);
-        return;
+        return alert('Editor not available or user not authenticated.');
       }
 
-      const cognitoUserId = user.userId;
-      const userPK = `USER#${cognitoUserId}`;
-      const onePagerUUID = uuidv4();
-      const onePagerPK = `ONEPAGER#${onePagerUUID}`;
-      const currentDateTime = new Date();
-      const currentStatus = isPublishing ? 'PUBLISHED' : 'DRAFT';
-      const statusUpdatedAtISO = currentDateTime.toISOString();
+      const finalInternalTitle = extractTitleFromEditor();
+      const contentBlocks = editorInstance.document || [];
+      const status = isPublishing ? 'PUBLISHED' : 'DRAFT';
 
-      const onePagerData = {
-        PK: onePagerPK,
-        SK: 'METADATA',
-        entityType: 'OnePager',
-        ownerUserId: userPK,
+      createMutation.mutate({
+        ownerUserId: user.userId,
         internalTitle: finalInternalTitle,
-        status: currentStatus,
-        statusUpdatedAt: statusUpdatedAtISO,
-        templateId: 'default',
-        contentBlocks: JSON.stringify(editorInstance.document || []),
-        gsi1PK: userPK,
-        gsi1SK: `${currentStatus}#${statusUpdatedAtISO}`,
-      };
-
-      try {
-        // Step 1: Create the OnePager item
-        const onePagerResult = await client.models.Entity.create(onePagerData as any);
-        if (onePagerResult.errors) {
-          throw new Error(onePagerResult.errors.map((e: any) => e.message).join(', '));
-        }
-        console.log('Entity (OnePager) saved:', onePagerResult.data);
-
-        // Step 2: Create the default SharedLink item, making it instantly public
-        const sharedLinkSlug = nanoid(6); // Generate a 6-char slug
-        const sharedLinkData = {
-          PK: `SLINK#${sharedLinkSlug}`,
-          SK: 'METADATA',
-          entityType: 'SharedLink',
-          baseOnePagerId: onePagerPK,
-          ownerUserId: userPK,
-          recipientNameForDisplay: 'Public Link',
-          gsi2PK: onePagerPK,
-          gsi2SK: statusUpdatedAtISO,
-        };
-
-        const sharedLinkResult = await client.models.Entity.create(sharedLinkData as any);
-        if (sharedLinkResult.errors) {
-          // In a real-world scenario, you might want to delete the OnePager item here (rollback)
-          throw new Error(
-            `OnePager was saved, but failed to create a share link: ${sharedLinkResult.errors.map((e: any) => e.message).join(', ')}`
-          );
-        }
-        console.log('Entity (SharedLink) saved:', sharedLinkResult.data);
-
-        // Step 3: Redirect to the new public page if publishing
-        if (isPublishing) {
-          router.push(`/edit/${onePagerUUID}`);
-        } else {
-          router.push(`/edit/${onePagerUUID}`);
-          setIsSaving(false);
-          setCurrentSavingAction(null);
-        }
-      } catch (e: any) {
-        console.error(`Error saving OnePager (publishing: ${isPublishing}):`, e);
-        alert(`An unexpected error occurred while saving: ${e.message}`);
-        setIsSaving(false);
-        setCurrentSavingAction(null);
-      }
+        status,
+        contentBlocks,
+      });
     },
-    [editorInstance, user, router]
-  ); // Added dependencies for useCallback
+    [editorInstance, user, extractTitleFromEditor, createMutation]
+  );
 
   const handleSaveDraft = () => {
     if (!editorInstance) {
@@ -240,7 +192,7 @@ export default function CreateOnePagerPage() {
               {viewMode === 'editor' ? <Eye className="h-4 w-4" /> : <Edit3 className="h-4 w-4" />}
             </Button>
             <Button onClick={handleSaveDraft} disabled={isSaving || !editorInstance} variant="outline">
-              {isSaving && currentSavingAction === 'draft' ? (
+              {isSaving && currentSavingAction === 'creating' ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Saving Draft...
                 </>
@@ -249,7 +201,7 @@ export default function CreateOnePagerPage() {
               )}
             </Button>
             <Button onClick={handleSaveAndPublish} disabled={isSaving || !editorInstance} variant="default">
-              {isSaving && currentSavingAction === 'publish' ? (
+              {isSaving && currentSavingAction === 'creating' ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Publishing...
                 </>

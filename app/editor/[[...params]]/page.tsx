@@ -71,7 +71,7 @@ export default function EditorPage() {
   const [initialContent, setInitialContent] = useState<PartialBlock[] | undefined>(
     isNewDocument ? defaultContent : undefined
   );
-  const [internalTitle, setInternalTitle] = useState(isNewDocument ? 'Untitled One-Pager' : '');
+  const [internalTitle, setInternalTitle] = useState(isNewDocument ? 'Untitled Page' : '');
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [isAuthDialogOpen, setIsAuthDialogOpen] = useState(false);
   const [saveIntentAfterAuth, setSaveIntentAfterAuth] = useState<'draft' | 'publish' | null>(null);
@@ -79,7 +79,7 @@ export default function EditorPage() {
 
   useEffect(() => {
     if (existingOnePager) {
-      setInternalTitle(existingOnePager.internalTitle || 'Untitled One-Pager');
+      setInternalTitle(existingOnePager.internalTitle || 'Untitled Page');
       try {
         const content = existingOnePager.contentBlocks ? JSON.parse(existingOnePager.contentBlocks) : [];
         // Ensure content is never empty for BlockNote
@@ -99,7 +99,7 @@ export default function EditorPage() {
       return alert('Editor is not ready or user session is invalid. Please try again.');
     }
 
-    const finalInternalTitle = internalTitle.trim() || 'Untitled One-Pager';
+    const finalInternalTitle = internalTitle.trim() || 'Untitled Page';
     const contentBlocks = editorInstance.document || [];
 
     saveDraftMutation.mutate({
@@ -116,7 +116,7 @@ export default function EditorPage() {
       return alert('Editor is not ready or user session is invalid. Please try again.');
     }
 
-    const finalInternalTitle = internalTitle.trim() || 'Untitled One-Pager';
+    const finalInternalTitle = internalTitle.trim() || 'Untitled Page';
     const contentBlocks = editorInstance.document || [];
 
     saveAndPublishMutation.mutate({
@@ -228,7 +228,7 @@ export default function EditorPage() {
   };
 
   const handleTitleSave = (newTitle: string) => {
-    setInternalTitle(newTitle.trim() || 'Untitled One-Pager');
+    setInternalTitle(newTitle.trim() || 'Untitled Page');
     setIsEditingTitle(false);
     // Auto-save the title change if user is authenticated and document exists
     if (user && !isNewDocument && editorInstance) {
@@ -253,7 +253,7 @@ export default function EditorPage() {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <Loader2 className="h-8 w-8 animate-spin" />
-        <p className="ml-4 text-lg">Loading One-Pager...</p>
+        <p className="ml-4 text-lg">Loading Page...</p>
       </div>
     );
   }
@@ -271,7 +271,7 @@ export default function EditorPage() {
                 onBlur={(e) => handleTitleSave(e.target.value)}
                 onKeyDown={handleTitleKeyDown}
                 className="font-semibold text-lg border-none shadow-none p-0 h-auto focus-visible:ring-0 bg-transparent min-w-[200px] outline-none"
-                placeholder="Untitled One-Pager"
+                placeholder="Untitled Page"
                 style={{
                   fontSize: 'inherit',
                   lineHeight: 'inherit',

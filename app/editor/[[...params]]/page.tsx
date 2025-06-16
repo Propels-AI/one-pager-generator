@@ -32,32 +32,44 @@ const Preview = dynamic(() => import('@/components/preview').then((mod) => mod.P
   ),
 });
 
-export default function EditOnePagerPage() {
+export default function EditorPage() {
   const { user } = useAuth();
   const router = useRouter();
   const params = useParams();
-  const idFromUrl = params.id ? decodeURIComponent(params.id as string) : '';
-  const isCreateMode = idFromUrl === 'new';
-  const onePagerPKToFetch = isCreateMode || !idFromUrl ? '' : `ONEPAGER#${idFromUrl}`;
+
+  // Extract document ID from params - undefined means new document
+  const documentId = Array.isArray(params.params) ? params.params[0] : params.params;
+  const isNewDocument = !documentId;
+  const onePagerPKToFetch = isNewDocument ? '' : `ONEPAGER#${documentId}`;
+
+  // Default content for new documents
+  const defaultContent: PartialBlock[] = [
+    {
+      type: 'paragraph' as const,
+      content: [],
+    },
+  ];
 
   // TanStack Query mutations
   const createMutation = useCreateOnePager();
   const updateMutation = useUpdateOnePager();
 
   const { data: existingOnePager, isLoading: isLoadingOnePager } = useQuery({
-    queryKey: ['onePager', idFromUrl],
+    queryKey: ['onePager', documentId || 'new'],
     queryFn: () => {
       if (!onePagerPKToFetch) {
         return Promise.resolve(null);
       }
       return fetchOnePagerById(onePagerPKToFetch);
     },
-    enabled: !isCreateMode && !!idFromUrl,
+    enabled: !isNewDocument && !!documentId,
   });
 
   const [editorInstance, setEditorInstance] = useState<BlockNoteEditorType | null>(null);
   const [editorContent, setEditorContent] = useState<PartialBlock[] | undefined>();
-  const [initialContent, setInitialContent] = useState<PartialBlock[] | undefined>(isCreateMode ? [] : undefined);
+  const [initialContent, setInitialContent] = useState<PartialBlock[] | undefined>(
+    isNewDocument ? defaultContent : undefined
+  );
   const [internalTitle, setInternalTitle] = useState('');
   const [isAuthDialogOpen, setIsAuthDialogOpen] = useState(false);
   const [saveIntentAfterAuth, setSaveIntentAfterAuth] = useState<'draft' | 'publish' | null>(null);
@@ -72,12 +84,14 @@ export default function EditOnePagerPage() {
       setInternalTitle(existingOnePager.internalTitle || 'Untitled One-Pager');
       try {
         const content = existingOnePager.contentBlocks ? JSON.parse(existingOnePager.contentBlocks) : [];
-        setInitialContent(content);
-        setEditorContent(content);
+        // Ensure content is never empty for BlockNote
+        const validContent = content.length > 0 ? content : defaultContent;
+        setInitialContent(validContent);
+        setEditorContent(validContent);
       } catch (e) {
         console.error('Failed to parse contentBlocks:', e);
-        setInitialContent([]);
-        setEditorContent([]);
+        setInitialContent(defaultContent);
+        setEditorContent(defaultContent);
       }
     }
   }, [existingOnePager]);
@@ -106,7 +120,7 @@ export default function EditOnePagerPage() {
       const contentBlocks = editorInstance.document || [];
       const status = isPublishing ? 'PUBLISHED' : 'DRAFT';
 
-      if (isCreateMode) {
+      if (isNewDocument) {
         createMutation.mutate({
           ownerUserId: user.userId,
           internalTitle: finalInternalTitle,
@@ -122,7 +136,7 @@ export default function EditOnePagerPage() {
         });
       }
     },
-    [editorInstance, user, isCreateMode, onePagerPKToFetch, extractTitleFromEditor, createMutation, updateMutation]
+    [editorInstance, user, isNewDocument, onePagerPKToFetch, extractTitleFromEditor, createMutation, updateMutation]
   );
 
   const handleSaveDraft = () => {
@@ -133,6 +147,18 @@ export default function EditOnePagerPage() {
     if (user) {
       executeSave(false);
     } else {
+      // Store state for auth wall (new document flow)
+      if (isNewDocument) {
+        localStorage.setItem(
+          'pendingOnePager',
+          JSON.stringify({
+            pendingAction: 'create',
+            contentBlocks: editorInstance.document,
+            saveIntent: 'draft',
+            returnTo: '/editor',
+          })
+        );
+      }
       setSaveIntentAfterAuth('draft');
       setIsAuthDialogOpen(true);
     }
@@ -140,8 +166,22 @@ export default function EditOnePagerPage() {
 
   const handleSaveAndPublish = () => {
     if (!editorInstance) return alert('Editor not available.');
-    if (user) executeSave(true);
-    else {
+
+    if (user) {
+      executeSave(true);
+    } else {
+      // Store state for auth wall (new document flow)
+      if (isNewDocument) {
+        localStorage.setItem(
+          'pendingOnePager',
+          JSON.stringify({
+            pendingAction: 'create',
+            contentBlocks: editorInstance.document,
+            saveIntent: 'publish',
+            returnTo: '/editor',
+          })
+        );
+      }
       setSaveIntentAfterAuth('publish');
       setIsAuthDialogOpen(true);
     }
@@ -153,6 +193,30 @@ export default function EditOnePagerPage() {
       setSaveIntentAfterAuth(null);
     }
   }, [user, saveIntentAfterAuth, isAuthDialogOpen, editorInstance, executeSave]);
+
+  // Load pending data from localStorage on mount (for auth wall flow)
+  useEffect(() => {
+    const pendingDataString = localStorage.getItem('pendingOnePager');
+    if (pendingDataString && isNewDocument) {
+      try {
+        const pendingData = JSON.parse(pendingDataString);
+        if (pendingData.pendingAction === 'create') {
+          console.log('Found pending create data in localStorage:', pendingData);
+          if (pendingData.contentBlocks) {
+            const restoredContent = pendingData.contentBlocks.length > 0 ? pendingData.contentBlocks : defaultContent;
+            setEditorContent(restoredContent);
+          }
+          if (user && pendingData.saveIntent) {
+            setSaveIntentAfterAuth(pendingData.saveIntent);
+          }
+          localStorage.removeItem('pendingOnePager');
+        }
+      } catch (error) {
+        console.error('Error parsing pending create data from localStorage:', error);
+        localStorage.removeItem('pendingOnePager');
+      }
+    }
+  }, [user, isNewDocument]);
 
   const handleEditorReady = useCallback((editor: BlockNoteEditorType) => {
     setEditorInstance(editor);
@@ -176,8 +240,8 @@ export default function EditOnePagerPage() {
         <div className="container flex h-14 items-center max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="mr-auto flex items-center">
             <h1 className="font-semibold text-lg">
-              {isCreateMode ? 'Create One-Pager' : 'Edit One-Pager'} ({viewMode === 'editor' ? 'Editing' : 'Previewing'}
-              )
+              {isNewDocument ? 'Create One-Pager' : 'Edit One-Pager'} (
+              {viewMode === 'editor' ? 'Editing' : 'Previewing'})
             </h1>
           </div>
           <div className="flex flex-1 items-center justify-end space-x-2">
@@ -201,7 +265,7 @@ export default function EditOnePagerPage() {
             <Button onClick={handleSaveAndPublish} disabled={isSaving || !editorInstance} variant="default">
               {isSaving && currentSavingAction ? (
                 <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" /> {isCreateMode ? 'Publishing...' : 'Publishing...'}
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" /> {isNewDocument ? 'Publishing...' : 'Publishing...'}
                 </>
               ) : (
                 'Save and Publish'
@@ -213,20 +277,20 @@ export default function EditOnePagerPage() {
 
       <main className="flex-grow container mx-auto px-4 pt-8 pb-4 max-w-screen-xl">
         <div className="flex flex-col gap-6">
-          {viewMode === 'editor' && (
-            <div className="w-full">
-              <div className="rounded-lg min-h-[calc(100vh-120px)] bg-white dark:bg-gray-950 overflow-hidden">
-                {initialContent !== undefined ? (
-                  <BlockNoteEditor onEditorReady={handleEditorReady} initialContent={initialContent} />
-                ) : (
-                  <div className="p-4 border rounded-md min-h-[calc(100vh-120px)] flex items-center justify-center text-muted-foreground bg-white dark:bg-gray-900">
-                    Loading Content...
-                  </div>
-                )}
-              </div>
+          {/* Editor - always mounted, visibility controlled by CSS */}
+          <div className={`w-full ${viewMode === 'editor' ? 'block' : 'hidden'}`}>
+            <div className="rounded-lg min-h-[calc(100vh-120px)] bg-white dark:bg-gray-950 overflow-hidden">
+              {initialContent !== undefined ? (
+                <BlockNoteEditor onEditorReady={handleEditorReady} initialContent={initialContent} />
+              ) : (
+                <div className="p-4 border rounded-md min-h-[calc(100vh-120px)] flex items-center justify-center text-muted-foreground bg-white dark:bg-gray-900">
+                  Loading Content...
+                </div>
+              )}
             </div>
-          )}
+          </div>
 
+          {/* Preview - only render when in preview mode */}
           {viewMode === 'preview' && (
             <div className="w-full h-full md:max-h-[calc(100vh-theme(spacing.14)-4rem)] overflow-y-auto">
               <div className="p-6 bg-white dark:bg-gray-950 rounded-lg min-h-[calc(100vh-120px)] md:min-h-0">
@@ -248,7 +312,13 @@ export default function EditOnePagerPage() {
       {isAuthDialogOpen && (
         <Dialog open={isAuthDialogOpen} onOpenChange={setIsAuthDialogOpen}>
           <DialogContent className="sm:max-w-[425px] md:max-w-[550px] lg:max-w-[700px] p-0 overflow-y-auto max-h-[90vh]">
-            <AuthSignInDialog onAuthSuccess={() => setIsAuthDialogOpen(false)} />
+            <AuthSignInDialog
+              onAuthSuccess={() => {
+                setIsAuthDialogOpen(false);
+                // The user effect will handle the pending save action
+                // No need to redirect since we're already on the right page
+              }}
+            />
           </DialogContent>
         </Dialog>
       )}

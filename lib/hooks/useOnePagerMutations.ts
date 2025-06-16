@@ -35,10 +35,10 @@ export function useCreateOnePager() {
       if (variables.status === 'PUBLISHED' && publicSlug) {
         router.push(`/${publicSlug}`);
       } else {
-        // Extract UUID from PK for edit URL
+        // Extract UUID from PK for editor URL
         const uuid = onePager.PK?.replace('ONEPAGER#', '');
         if (uuid) {
-          router.push(`/edit/${uuid}`);
+          router.push(`/editor/${uuid}`);
         }
       }
     },

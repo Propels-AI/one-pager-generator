@@ -54,15 +54,23 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         case 'signedIn':
           checkCurrentUser(); // Re-check user and fetch attributes
           try {
-            const pendingDataString = localStorage.getItem('pendingCreateOnePager');
-            if (pendingDataString) {
-              const pendingData = JSON.parse(pendingDataString);
+            // Check for legacy pendingCreateOnePager (old key)
+            const pendingCreateDataString = localStorage.getItem('pendingCreateOnePager');
+            // Check for new pendingOnePager key (used by editor)
+            const pendingOnePagerString = localStorage.getItem('pendingOnePager');
+
+            if (pendingCreateDataString) {
+              const pendingData = JSON.parse(pendingCreateDataString);
               if (pendingData.returnTo) {
                 console.log('AuthProvider: Redirecting to stored returnTo path:', pendingData.returnTo);
                 router.push(pendingData.returnTo);
               } else {
                 router.push('/dashboard');
               }
+            } else if (pendingOnePagerString) {
+              // Don't auto-redirect if there's pending one-pager data
+              // Let the component that set this data handle the redirect
+              console.log('AuthProvider: Found pendingOnePager data, skipping auto-redirect');
             } else {
               router.push('/dashboard');
             }

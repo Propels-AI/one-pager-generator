@@ -144,7 +144,7 @@ export default function DashboardPage() {
             Sign Out
           </Button>
           <Button asChild>
-            <Link href="/create">
+            <Link href="/editor">
               <Plus className="h-4 w-4 mr-2" /> Create New
             </Link>
           </Button>
@@ -186,7 +186,7 @@ export default function DashboardPage() {
                       return (
                         <TableRow key={pager.PK}>
                           <TableCell className="font-medium">
-                            <Link href={`/edit/${pager.PK.split('#')[1]}`} className="hover:underline">
+                            <Link href={`/editor/${pager.PK.split('#')[1]}`} className="hover:underline">
                               {pager.internalTitle || 'Untitled One-Pager'}
                             </Link>
                           </TableCell>
@@ -230,7 +230,7 @@ export default function DashboardPage() {
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end">
                                 <DropdownMenuItem asChild>
-                                  <Link href={`/edit/${pager.PK.split('#')[1]}`} className="flex items-center">
+                                  <Link href={`/editor/${pager.PK.split('#')[1]}`} className="flex items-center">
                                     <Edit className="h-4 w-4 mr-2" /> Edit
                                   </Link>
                                 </DropdownMenuItem>
@@ -287,7 +287,7 @@ export default function DashboardPage() {
                     {draftOnePagers.map((pager) => (
                       <TableRow key={pager.PK}>
                         <TableCell className="font-medium">
-                          <Link href={`/edit/${pager.PK.split('#')[1]}`} className="hover:underline">
+                          <Link href={`/editor/${pager.PK.split('#')[1]}`} className="hover:underline">
                             {pager.internalTitle || 'Untitled Draft'}
                           </Link>
                         </TableCell>
@@ -304,7 +304,7 @@ export default function DashboardPage() {
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
                               <DropdownMenuItem asChild>
-                                <Link href={`/edit/${pager.PK.split('#')[1]}`} className="flex items-center">
+                                <Link href={`/editor/${pager.PK.split('#')[1]}`} className="flex items-center">
                                   <Edit className="h-4 w-4 mr-2" /> Edit
                                 </Link>
                               </DropdownMenuItem>

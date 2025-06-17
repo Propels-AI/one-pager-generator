@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import ImageField from '@/components/ui/ImageField';
 
 // Interfaces
 interface TeamMember {
@@ -44,7 +45,7 @@ const TeamSectionDisplay: React.FC<TeamSectionDisplayProps> = ({
         {teamMembers.map((person) => (
           <div key={person.id} className="flex flex-col items-start">
             <Avatar className="mb-4 size-20 md:mb-5 lg:size-24">
-              <AvatarImage src={person.avatar} alt={person.name} />
+              {person.avatar && <AvatarImage src={person.avatar} alt={person.name} />}
               <AvatarFallback>{person.name.substring(0, 2)}</AvatarFallback>
             </Avatar>
             <p className="text-lg font-semibold">{person.name}</p>
@@ -264,11 +265,12 @@ export const TeamBlockSpec = createReactBlockSpec(teamBlockConfig, {
                       </div>
                     </div>
                     <div>
-                      <Label htmlFor={`memberAvatar-${member.id}`}>Avatar URL</Label>
-                      <Input
-                        id={`memberAvatar-${member.id}`}
+                      <ImageField
+                        label="Avatar Image"
                         value={member.avatar}
-                        onChange={(e) => handleMemberChange(index, 'avatar', e.target.value)}
+                        onChange={(url) => handleMemberChange(index, 'avatar', url)}
+                        metadata={{ blockType: 'team', onePagerId: block.id }}
+                        placeholder="Upload team member avatar"
                       />
                     </div>
                     <div>

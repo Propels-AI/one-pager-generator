@@ -4,13 +4,14 @@ import React, { useState } from 'react';
 import { createReactBlockSpec } from '@blocknote/react';
 import { defaultBlockSpecs } from '@blocknote/core';
 import { MdFormatQuote } from 'react-icons/md';
-import { Avatar, AvatarImage } from '@/components/ui/avatar';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Card, CardContent, CardFooter } from '@/components/ui/card';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Trash2, Pencil } from 'lucide-react';
+import ImageField from '@/components/ui/ImageField';
 
 interface SubTestimonialItem {
   id: string;
@@ -62,11 +63,13 @@ export const testimonialBlockSpec = createReactBlockSpec(testimonialBlockConfig,
         <div className="container mx-auto">
           <div className="flex flex-col gap-6">
             <div className="grid grid-cols-1 items-stretch gap-x-0 gap-y-4 lg:grid-cols-3 lg:gap-4">
-              <img
-                src={mainImageUrl}
-                alt="Main testimonial visual"
-                className="h-72 w-full rounded-md object-cover lg:h-auto"
-              />
+              {mainImageUrl && (
+                <img
+                  src={mainImageUrl}
+                  alt="Main testimonial visual"
+                  className="h-72 w-full rounded-md object-cover lg:h-auto"
+                />
+              )}
               <Card className="col-span-2 flex items-center justify-center p-6">
                 <div className="flex flex-col gap-4">
                   <q className="text-xl font-medium lg:text-3xl">{mainQuote}</q>
@@ -89,7 +92,8 @@ export const testimonialBlockSpec = createReactBlockSpec(testimonialBlockConfig,
                   <CardFooter>
                     <div className="flex gap-4 leading-5 items-center">
                       <Avatar className="size-9 rounded-full ring-1 ring-input">
-                        <AvatarImage src={item.avatarUrl} alt={item.authorName} />
+                        {item.avatarUrl && <AvatarImage src={item.avatarUrl} alt={item.authorName} />}
+                        <AvatarFallback>{(item.authorName || 'A').substring(0, 2).toUpperCase()}</AvatarFallback>
                       </Avatar>
                       <div className="text-sm">
                         <p className="font-medium">{item.authorName}</p>
@@ -168,11 +172,12 @@ export const testimonialBlockSpec = createReactBlockSpec(testimonialBlockConfig,
                   <h4 className="font-medium leading-none mb-4">Edit Main Testimonial</h4>
                   <div className="space-y-4">
                     <div className="grid gap-2">
-                      <Label htmlFor="mainImageUrl">Main Image URL</Label>
-                      <Input
-                        id="mainImageUrl"
+                      <ImageField
+                        label="Main Testimonial Image"
                         value={currentMainImageUrl}
-                        onChange={(e) => setCurrentMainImageUrl(e.target.value)}
+                        onChange={setCurrentMainImageUrl}
+                        metadata={{ blockType: 'testimonial', onePagerId: block.id }}
+                        placeholder="Upload main testimonial image"
                       />
                     </div>
                     <div className="grid gap-2">
@@ -223,10 +228,12 @@ export const testimonialBlockSpec = createReactBlockSpec(testimonialBlockConfig,
                           />
                         </div>
                         <div className="grid gap-2">
-                          <Label>Avatar URL</Label>
-                          <Input
+                          <ImageField
+                            label="Avatar Image"
                             value={item.avatarUrl}
-                            onChange={(e) => handleSubItemChange(index, 'avatarUrl', e.target.value)}
+                            onChange={(url) => handleSubItemChange(index, 'avatarUrl', url)}
+                            metadata={{ blockType: 'testimonial-avatar', onePagerId: block.id }}
+                            placeholder="Upload testimonial avatar"
                           />
                         </div>
                         <div className="grid gap-2">

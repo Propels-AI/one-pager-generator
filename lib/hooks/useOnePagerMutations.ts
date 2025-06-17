@@ -10,13 +10,28 @@ import {
   type UpdateOnePagerInput,
   type OnePagerFromSchema,
 } from '@/lib/services/entityService';
+import { imageMigrationService } from '@/lib/services/imageMigrationService';
 
 export function useCreateOnePager() {
   const queryClient = useQueryClient();
   const router = useRouter();
 
   return useMutation({
-    mutationFn: createOnePager,
+    mutationFn: async (variables: CreateOnePagerInput) => {
+      // Migrate any draft images to S3 before saving
+      const migratedContentBlocks = await imageMigrationService.migrateContentBlockImages(
+        variables.contentBlocks,
+        'new-document', // Will be updated with actual ID after creation
+        {
+          cleanupDrafts: true,
+        }
+      );
+
+      return createOnePager({
+        ...variables,
+        contentBlocks: migratedContentBlocks.updatedContentBlocks,
+      });
+    },
     onSuccess: (data, variables) => {
       const { onePager, publicSlug } = data;
       const ownerUserId = variables.ownerUserId;
@@ -55,7 +70,24 @@ export function useUpdateOnePager() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: updateOnePager,
+    mutationFn: async (variables: UpdateOnePagerInput) => {
+      // Extract UUID from PK for onePagerId
+      const onePagerId = variables.PK.replace('ONEPAGER#', '');
+
+      // Migrate any draft images to S3 before updating
+      const migratedContentBlocks = await imageMigrationService.migrateContentBlockImages(
+        variables.contentBlocks,
+        onePagerId,
+        {
+          cleanupDrafts: true,
+        }
+      );
+
+      return updateOnePager({
+        ...variables,
+        contentBlocks: migratedContentBlocks.updatedContentBlocks,
+      });
+    },
     onMutate: async (variables) => {
       // Cancel outgoing refetches
       await queryClient.cancelQueries({ queryKey: ['onePager', variables.PK.replace('ONEPAGER#', '')] });

@@ -60,9 +60,18 @@ export function getFileExtension(filename: string): string {
 
 /**
  * Generate S3 path for a user's image
+ * @param identityId - Cognito Identity ID for secure access
+ * @param filename - The filename
+ * @param isPublic - Whether this should be publicly accessible (for published content)
  */
-export function generateS3Path(userId: string, filename: string): string {
-  return `public/media/${userId}/${filename}`;
+export function generateS3Path(identityId: string, filename: string, isPublic: boolean = false): string {
+  if (isPublic) {
+    // Public path for published one-pager images (anyone can read)
+    return `public/shared/${filename}`;
+  } else {
+    // Private path for draft/personal images (only owner can access)
+    return `private/${identityId}/${filename}`;
+  }
 }
 
 /**
@@ -112,7 +121,8 @@ export function isBlobUrl(url: string): boolean {
  * Extract temp image ID from blob URL
  */
 export function extractTempImageIdFromBlobUrl(blobUrl: string): string | null {
-  // Our blob URLs will contain the UUID: blob:http://localhost:3000/uuid-here
+  // Our blob URLs are created with URL.createObjectURL() and contain a UUID at the end
+  // Format: blob:http://localhost:3000/uuid-here
   const uuidRegex = /([0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})/i;
   const match = blobUrl.match(uuidRegex);
   return match ? match[1] : null;

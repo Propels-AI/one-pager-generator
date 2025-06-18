@@ -18,12 +18,14 @@ export function useCreateOnePager() {
 
   return useMutation({
     mutationFn: async (variables: CreateOnePagerInput) => {
-      // Migrate any draft images to S3 before saving
+      // Migrate any draft images to S3 before creating
+      const isPublishing = variables.status === 'PUBLISHED';
       const migratedContentBlocks = await imageMigrationService.migrateContentBlockImages(
         variables.contentBlocks,
-        'new-document', // Will be updated with actual ID after creation
+        'new-document',
         {
           cleanupDrafts: true,
+          isPublishing,
         }
       );
 
@@ -75,11 +77,13 @@ export function useUpdateOnePager() {
       const onePagerId = variables.PK.replace('ONEPAGER#', '');
 
       // Migrate any draft images to S3 before updating
+      const isPublishing = variables.status === 'PUBLISHED';
       const migratedContentBlocks = await imageMigrationService.migrateContentBlockImages(
         variables.contentBlocks,
         onePagerId,
         {
           cleanupDrafts: true,
+          isPublishing,
         }
       );
 

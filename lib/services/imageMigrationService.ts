@@ -7,6 +7,9 @@ import {
   isBlobUrl,
   isS3Url,
   extractTempImageIdFromBlobUrl,
+  extractS3KeyFromUrl,
+  generateUniqueFileName,
+  generateS3Path,
 } from '@/lib/utils/imageUtils';
 
 // Migration result for a single image
@@ -50,8 +53,10 @@ export class ImageMigrationService {
   }
 
   /**
-   * Migrate draft images in content blocks to S3
-   * This is the main method to call during save/publish operations
+   * Migrate content block images to S3
+   * @param contentBlocks - The content blocks containing image URLs
+   * @param onePagerId - The ID of the one-pager
+   * @param options - Migration options including whether this is for publishing
    */
   async migrateContentBlockImages(
     contentBlocks: any[],
@@ -59,59 +64,72 @@ export class ImageMigrationService {
     options?: MigrationOptions & { isPublishing?: boolean }
   ): Promise<{ updatedContentBlocks: any[]; migrationResults: ImageMigrationResult[] }> {
     try {
-      // Extract all image URLs from content blocks
-      const imageUrls = extractImageUrls(contentBlocks);
+      let currentContentBlocks = contentBlocks;
+      let allMigrationResults: ImageMigrationResult[] = [];
 
-      // Filter for blob URLs (draft images that need migration)
+      // Step 1: Handle blob URLs (draft images)
+      const imageUrls = extractImageUrls(currentContentBlocks);
       const blobUrls = imageUrls.filter((url) => isBlobUrl(url));
 
-      if (blobUrls.length === 0) {
-        return {
-          updatedContentBlocks: contentBlocks,
-          migrationResults: [],
+      if (blobUrls.length > 0) {
+        // Report initial progress
+        options?.onProgress?.({
+          totalImages: blobUrls.length,
+          migratedImages: 0,
+          percentage: 0,
+        });
+
+        // Set migration options based on publishing status
+        const migrationOptions = {
+          ...options,
+          // If publishing, use 'published' prefix to trigger public path
+          filePrefix: options?.isPublishing ? 'published' : options?.filePrefix,
         };
+
+        // Migrate each blob URL to S3
+        const blobMigrationResults = await this.migrateBlobUrls(blobUrls, onePagerId, migrationOptions);
+        allMigrationResults.push(...blobMigrationResults);
+
+        // Create URL mapping for replacement
+        const urlMapping = new Map<string, string>();
+        blobMigrationResults.forEach((result) => {
+          // Include both successful migrations and "soft errors" where we keep the original URL
+          if (!result.error || result.error === 'Draft image not found - keeping original URL') {
+            urlMapping.set(result.originalUrl, result.s3Url);
+          }
+        });
+
+        // Replace blob URLs with S3 URLs in content blocks
+        currentContentBlocks = replaceUrlsInContentBlocks(currentContentBlocks, urlMapping);
       }
 
-      // Report initial progress
-      options?.onProgress?.({
-        totalImages: blobUrls.length,
-        migratedImages: 0,
-        percentage: 0,
-      });
-
-      // Migrate each blob URL to S3
-      const migrationResults = await this.migrateBlobUrls(blobUrls, onePagerId, options);
-
-      // Create URL mapping for replacement
-      const urlMapping = new Map<string, string>();
-      migrationResults.forEach((result) => {
-        // Include both successful migrations and "soft errors" where we keep the original URL
-        if (!result.error || result.error === 'Draft image not found - keeping original URL') {
-          urlMapping.set(result.originalUrl, result.s3Url);
-        }
-      });
-
-      // Replace blob URLs with S3 URLs in content blocks
-      const updatedContentBlocks = replaceUrlsInContentBlocks(contentBlocks, urlMapping);
+      // Step 2: Handle private-to-public migration when publishing
+      if (options?.isPublishing) {
+        const privateToPublicResult = await this.migratePrivateToPublicImages(
+          currentContentBlocks,
+          onePagerId,
+          options
+        );
+        currentContentBlocks = privateToPublicResult.updatedContentBlocks;
+        allMigrationResults.push(...privateToPublicResult.migrationResults);
+      }
 
       // Clean up draft images if requested
       if (options?.cleanupDrafts) {
-        await this.cleanupMigratedDraftImages(migrationResults);
+        await this.cleanupMigratedDraftImages(allMigrationResults);
       }
 
       return {
-        updatedContentBlocks,
-        migrationResults,
+        updatedContentBlocks: currentContentBlocks,
+        migrationResults: allMigrationResults,
       };
     } catch (error) {
-      console.error('Content block image migration failed:', error);
+      console.error('❌ Content block image migration failed:', error);
       throw new Error(`Migration failed: ${error}`);
     }
   }
 
-  /**
-   * Migrate multiple blob URLs to S3
-   */
+  // Migrate multiple blob URLs to S3
   private async migrateBlobUrls(
     blobUrls: string[],
     onePagerId: string,
@@ -138,9 +156,6 @@ export class ImageMigrationService {
         // Only call onImageMigrated for successful migrations
         if (!result.error) {
           options?.onImageMigrated?.(result);
-        } else if (result.error === 'Draft image not found - keeping original URL') {
-          // This is a soft error - log as warning but don't call error callback
-          console.warn(`Skipped migration for orphaned blob URL: ${blobUrl}`);
         }
       } catch (error) {
         const failedResult: ImageMigrationResult = {
@@ -166,9 +181,7 @@ export class ImageMigrationService {
     return results;
   }
 
-  /**
-   * Migrate a single blob URL to S3
-   */
+  // Migrate a single blob URL to S3
   private async migrateBlobUrl(
     blobUrl: string,
     onePagerId: string,
@@ -180,12 +193,7 @@ export class ImageMigrationService {
       const draftImage = allDraftImages.find((img) => img.previewUrl === blobUrl);
 
       if (!draftImage) {
-        // Handle orphaned blob URLs gracefully
-        console.warn(
-          `Draft image not found for blob URL: ${blobUrl}. This may be an orphaned blob URL from browser navigation or a race condition.`
-        );
-
-        // Return a result that keeps the original URL (no migration needed)
+        // Handle orphaned blob URLs gracefully - return a result that keeps the original URL
         return {
           originalUrl: blobUrl,
           s3Url: blobUrl, // Keep the blob URL as-is since we can't migrate it
@@ -223,10 +231,8 @@ export class ImageMigrationService {
     }
   }
 
-  /**
-   * Migrate draft images for a specific block type
-   * Useful when saving individual blocks
-   */
+  // Migrate draft images for a specific block type
+  // Useful when saving individual blocks
   async migrateBlockImages(
     imageUrls: string[],
     blockType: string,
@@ -264,25 +270,19 @@ export class ImageMigrationService {
     };
   }
 
-  /**
-   * Check if content blocks contain draft images that need migration
-   */
+  // Check if content blocks contain draft images that need migration
   hasUnmigratedImages(contentBlocks: any[]): boolean {
     const imageUrls = extractImageUrls(contentBlocks);
     return imageUrls.some((url) => isBlobUrl(url));
   }
 
-  /**
-   * Get count of unmigrated draft images
-   */
+  // Get count of unmigrated draft images
   getUnmigratedImageCount(contentBlocks: any[]): number {
     const imageUrls = extractImageUrls(contentBlocks);
     return imageUrls.filter((url) => isBlobUrl(url)).length;
   }
 
-  /**
-   * Clean up draft images after successful migration
-   */
+  // Clean up draft images after successful migration
   private async cleanupMigratedDraftImages(migrationResults: ImageMigrationResult[]): Promise<void> {
     const cleanupPromises = migrationResults
       .filter((result) => !result.error && result.s3Key) // Only clean up successfully migrated images with S3 keys
@@ -300,10 +300,8 @@ export class ImageMigrationService {
     await Promise.all(cleanupPromises);
   }
 
-  /**
-   * Rollback S3 uploads if save operation fails
-   * This helps prevent orphaned files in S3
-   */
+  // Rollback S3 uploads if save operation fails
+  // This helps prevent orphaned files in S3
   async rollbackMigration(migrationResults: ImageMigrationResult[]): Promise<void> {
     const { remove } = await import('aws-amplify/storage');
 
@@ -320,9 +318,7 @@ export class ImageMigrationService {
     await Promise.all(rollbackPromises);
   }
 
-  /**
-   * Preview migration - check what would be migrated without actually doing it
-   */
+  // Preview migration - check what would be migrated without actually doing it
   async previewMigration(contentBlocks: any[]): Promise<{
     blobUrls: string[];
     draftImages: DraftImage[];
@@ -350,6 +346,128 @@ export class ImageMigrationService {
       draftImages,
       totalSize,
     };
+  }
+
+  // Migrate existing S3 images from private to public paths when publishing
+  // This handles the case where a draft with S3 images is being published
+  async migratePrivateToPublicImages(
+    contentBlocks: any[],
+    onePagerId: string,
+    options?: MigrationOptions
+  ): Promise<{ updatedContentBlocks: any[]; migrationResults: ImageMigrationResult[] }> {
+    try {
+      const imageUrls = extractImageUrls(contentBlocks);
+      const s3Urls = imageUrls.filter((url) => isS3Url(url));
+
+      // For each S3 URL, we need to check if it's actually pointing to a private path
+      // Since signed URLs don't contain the path structure, we'll try to extract the S3 key
+      const potentialPrivateUrls: string[] = [];
+
+      for (const url of s3Urls) {
+        const s3Key = extractS3KeyFromUrl(url);
+
+        if (s3Key && s3Key.startsWith('private/')) {
+          potentialPrivateUrls.push(url);
+        }
+      }
+
+      if (potentialPrivateUrls.length === 0) {
+        return {
+          updatedContentBlocks: contentBlocks,
+          migrationResults: [],
+        };
+      }
+
+      const migrationResults: ImageMigrationResult[] = [];
+      const urlMapping = new Map<string, string>();
+
+      // Import necessary storage functions
+      const { downloadData, uploadData } = await import('aws-amplify/storage');
+      const { generateUniqueFileName, generateS3Path } = await import('@/lib/utils/imageUtils');
+
+      for (const privateUrl of potentialPrivateUrls) {
+        try {
+          // Extract the private S3 key from the URL
+          const privateKey = extractS3KeyFromUrl(privateUrl);
+          if (!privateKey || !privateKey.startsWith('private/')) {
+            continue;
+          }
+
+          // Download the file from private location
+          const downloadResult = await downloadData({ path: privateKey }).result;
+          const fileBlob = await downloadResult.body.blob();
+
+          // Generate new public path
+          const identityId = privateKey.split('/')[1]; // Extract identity ID from path
+          const originalFilename = privateKey.split('/').pop() || 'image';
+          const newFilename = generateUniqueFileName(originalFilename, 'published');
+          const publicKey = generateS3Path(identityId, newFilename, true);
+
+          // Upload to public location
+          const uploadResult = await uploadData({
+            path: publicKey,
+            data: fileBlob,
+            options: {
+              contentType: downloadResult.contentType,
+            },
+          }).result;
+
+          // Generate public URL
+          const publicUrl = await this.getS3UrlFromPath(uploadResult.path);
+
+          urlMapping.set(privateUrl, publicUrl);
+          migrationResults.push({
+            originalUrl: privateUrl,
+            s3Url: publicUrl,
+            s3Key: uploadResult.path,
+            uploadResult: {
+              s3Url: publicUrl,
+              s3Key: uploadResult.path,
+              size: fileBlob.size,
+              contentType: downloadResult.contentType || 'image/jpeg',
+            },
+          });
+        } catch (error) {
+          migrationResults.push({
+            originalUrl: privateUrl,
+            s3Url: privateUrl, // Keep original as fallback
+            s3Key: '',
+            uploadResult: {} as UploadResult,
+            error: `Migration failed: ${error}`,
+          });
+        }
+      }
+
+      // Replace URLs in content blocks
+      const updatedContentBlocks = replaceUrlsInContentBlocks(contentBlocks, urlMapping);
+
+      return {
+        updatedContentBlocks,
+        migrationResults,
+      };
+    } catch (error) {
+      throw new Error(`Private to public migration failed: ${error}`);
+    }
+  }
+
+  // Helper method to get S3 URL from path (extracted for reuse)
+  private async getS3UrlFromPath(path: string): Promise<string> {
+    try {
+      const { getUrl } = await import('aws-amplify/storage');
+
+      const urlResult = await getUrl({
+        path: path,
+        options: {
+          validateObjectExistence: false,
+          expiresIn: 3600,
+        },
+      });
+
+      return urlResult.url.toString();
+    } catch (error) {
+      console.error('Error getting S3 URL from path:', error);
+      return path; // Fallback
+    }
   }
 }
 

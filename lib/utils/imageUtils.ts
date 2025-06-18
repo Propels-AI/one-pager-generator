@@ -79,21 +79,25 @@ export function generateS3Path(identityId: string, filename: string, isPublic: b
  */
 export function extractS3KeyFromUrl(url: string): string | null {
   try {
+    // Parse the URL to separate the path from query parameters
+    const urlObj = new URL(url);
+    const pathWithoutLeadingSlash = urlObj.pathname.slice(1); // Remove leading /
+
     // Handle both CloudFront and direct S3 URLs
     const patterns = [
       // CloudFront URL: https://d123.cloudfront.net/public/media/user123/file.jpg
-      /https:\/\/[^\/]+\.cloudfront\.net\/(.+)/,
+      /^[^\/]*\.cloudfront\.net$/,
       // Direct S3 URL: https://bucket.s3.region.amazonaws.com/public/media/user123/file.jpg
-      /https:\/\/[^\/]+\.s3[^\/]*\.amazonaws\.com\/(.+)/,
+      /^[^\/]*\.s3[^\/]*\.amazonaws\.com$/,
       // S3 website URL: https://bucket.s3-website-region.amazonaws.com/public/media/user123/file.jpg
-      /https:\/\/[^\/]+\.s3-website[^\/]*\.amazonaws\.com\/(.+)/,
+      /^[^\/]*\.s3-website[^\/]*\.amazonaws\.com$/,
     ];
 
-    for (const pattern of patterns) {
-      const match = url.match(pattern);
-      if (match && match[1]) {
-        return decodeURIComponent(match[1]);
-      }
+    // Check if hostname matches any S3 pattern
+    const isS3Host = patterns.some((pattern) => pattern.test(urlObj.hostname));
+
+    if (isS3Host && pathWithoutLeadingSlash) {
+      return decodeURIComponent(pathWithoutLeadingSlash);
     }
 
     return null;

@@ -26,9 +26,7 @@ export interface UploadOptions {
   filePrefix?: string; // Optional prefix for generated filename (e.g., 'team', 'testimonial')
 }
 
-/**
- * Service for uploading draft images to S3 using Amplify Storage
- */
+// Service for uploading draft images to S3 using Amplify Storage
 export class S3UploadService {
   private static instance: S3UploadService;
 
@@ -39,10 +37,8 @@ export class S3UploadService {
     return S3UploadService.instance;
   }
 
-  /**
-   * Get secure Cognito Identity ID for path generation
-   * This ensures only the identity owner can write to their folder
-   */
+  // Get secure Cognito Identity ID for path generation
+  // This ensures only the identity owner can write to their folder
   private async getSecureIdentityId(): Promise<string> {
     try {
       const session = await fetchAuthSession();
@@ -59,9 +55,7 @@ export class S3UploadService {
     }
   }
 
-  /**
-   * Upload a draft image to S3
-   */
+  // Upload a draft image to S3
   async uploadDraftImage(draftImage: DraftImage, options?: UploadOptions): Promise<UploadResult> {
     try {
       // Get secure identity ID (not user ID for security)
@@ -73,8 +67,8 @@ export class S3UploadService {
           ? generateUniqueFileName(draftImage.originalFileName, options?.filePrefix)
           : draftImage.originalFileName;
 
-      // Generate S3 path - private for drafts, public when published
-      const isPublic = Boolean(draftImage.onePagerId && draftImage.onePagerId !== 'new-document');
+      // Generate S3 path - use public path if publishing or filePrefix is 'published'
+      const isPublic = options?.filePrefix === 'published';
       const s3Key = generateS3Path(identityId, fileName, isPublic);
 
       // Prepare upload
@@ -124,9 +118,7 @@ export class S3UploadService {
     }
   }
 
-  /**
-   * Upload multiple draft images in parallel
-   */
+  // Upload multiple draft images in parallel
   async uploadMultipleDraftImages(
     draftImages: DraftImage[],
     options?: UploadOptions & {
@@ -157,9 +149,7 @@ export class S3UploadService {
     return Promise.all(uploadPromises);
   }
 
-  /**
-   * Upload file directly (without draft storage)
-   */
+  // Upload file directly (without draft storage)
   async uploadFile(file: File, options?: UploadOptions): Promise<UploadResult> {
     try {
       // Get secure identity ID for path construction
@@ -215,9 +205,7 @@ export class S3UploadService {
     }
   }
 
-  /**
-   * Get public S3 URL from path using Amplify getUrl API
-   */
+  // Get public S3 URL from path using Amplify getUrl API
   private async getS3UrlFromPath(path: string): Promise<string> {
     try {
       // For public files, we need to use Amplify's getUrl to get the signed URL
@@ -242,9 +230,7 @@ export class S3UploadService {
     }
   }
 
-  /**
-   * Retry upload with exponential backoff
-   */
+  // Retry upload with exponential backoff
   async uploadWithRetry(
     draftImage: DraftImage,
     maxRetries: number = 3,
@@ -265,8 +251,6 @@ export class S3UploadService {
         // Exponential backoff: wait 1s, 2s, 4s, etc.
         const delay = Math.pow(2, attempt) * 1000;
         await new Promise((resolve) => setTimeout(resolve, delay));
-
-        console.warn(`Upload attempt ${attempt + 1} failed, retrying in ${delay}ms...`);
       }
     }
 

@@ -4,7 +4,6 @@ import { useEffect } from 'react';
 import { Hub } from '@aws-amplify/core';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Input } from '@/components/ui/input';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
 import { Label } from '@/components/ui/label';
@@ -19,14 +18,17 @@ import {
   type SignUpOutput,
 } from 'aws-amplify/auth';
 import { Loader2 } from 'lucide-react';
+import { DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { toast } from 'sonner';
 
 type AuthMode = 'signIn' | 'signUp' | 'confirmSignUp' | 'forgotPassword' | 'confirmForgotPassword';
 
 interface AuthSignInDialogProps {
   onAuthSuccess?: () => void;
+  isInDialog?: boolean; // Whether this component is inside a Dialog component
 }
 
-function AuthSignInDialogComponent({ onAuthSuccess }: AuthSignInDialogProps) {
+function AuthSignInDialogComponent({ onAuthSuccess, isInDialog = false }: AuthSignInDialogProps) {
   const id = useId();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -38,8 +40,6 @@ function AuthSignInDialogComponent({ onAuthSuccess }: AuthSignInDialogProps) {
   const [newPassword, setNewPassword] = useState(''); // For confirmForgotPassword mode
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [showSuccessAlert, setShowSuccessAlert] = useState(false);
-  const [successMessage, setSuccessMessage] = useState('');
 
   useEffect(() => {
     const hubListenerCancel = Hub.listen('auth', ({ payload }) => {
@@ -57,11 +57,6 @@ function AuthSignInDialogComponent({ onAuthSuccess }: AuthSignInDialogProps) {
       hubListenerCancel();
     };
   }, [onAuthSuccess]);
-
-  const handleAlertDismiss = () => {
-    setShowSuccessAlert(false);
-    setSuccessMessage('');
-  };
 
   const executeSignIn = async () => {
     const { isSignedIn, nextStep } = await signIn({
@@ -161,12 +156,21 @@ function AuthSignInDialogComponent({ onAuthSuccess }: AuthSignInDialogProps) {
     try {
       await confirmSignUp({ username: email, confirmationCode: currentCode });
 
-      setSuccessMessage('Account confirmed! Please sign in with your credentials.');
-      setShowSuccessAlert(true);
-      setAuthMode('signIn');
-      setPassword('');
-      setConfirmPassword('');
-      setConfirmationCode('');
+      // Show success toast
+      toast.success('Account confirmed! Signing you in...');
+
+      // Auto sign-in after successful confirmation
+      try {
+        await executeSignIn();
+        // executeSignIn will handle the success flow via Hub event
+      } catch (signInError: any) {
+        // If auto sign-in fails, show sign-in form with message
+        setAuthMode('signIn');
+        setPassword('');
+        setConfirmPassword('');
+        setConfirmationCode('');
+        toast.success('Account confirmed! Please sign in with your credentials.');
+      }
     } catch (err: any) {
       console.error('Confirm sign up error:', err);
       if (err.name === 'CodeMismatchException') {
@@ -192,8 +196,7 @@ function AuthSignInDialogComponent({ onAuthSuccess }: AuthSignInDialogProps) {
     setError(null);
     try {
       await resendSignUpCode({ username: email });
-      setSuccessMessage('Confirmation code resent. Please check your email.');
-      setShowSuccessAlert(true);
+      toast.success('Confirmation code resent. Please check your email.');
     } catch (err: any) {
       setError(err.message || 'Failed to resend confirmation code.');
     } finally {
@@ -239,7 +242,25 @@ function AuthSignInDialogComponent({ onAuthSuccess }: AuthSignInDialogProps) {
   };
 
   return (
-    <div className="w-full max-w-md p-6 space-y-6 bg-background text-foreground rounded-lg shadow-md border">
+    <div
+      className={`w-full space-y-6 ${isInDialog ? 'p-6' : 'max-w-md mx-auto p-6 bg-background text-foreground rounded-lg shadow-md border'}`}
+    >
+      {isInDialog && (
+        <DialogHeader>
+          <DialogTitle className="sr-only">
+            {authMode === 'signIn'
+              ? 'Sign In'
+              : authMode === 'signUp'
+                ? 'Sign Up'
+                : authMode === 'confirmSignUp'
+                  ? 'Confirm Account'
+                  : authMode === 'forgotPassword'
+                    ? 'Reset Password'
+                    : 'Confirm Password Reset'}
+          </DialogTitle>
+        </DialogHeader>
+      )}
+
       {/* Header Section */}
       <div className="flex flex-col items-center gap-2">
         <div
@@ -535,13 +556,6 @@ function AuthSignInDialogComponent({ onAuthSuccess }: AuthSignInDialogProps) {
         )}
       </form>
 
-      {showSuccessAlert && (
-        <div className="fixed top-4 left-1/2 transform -translate-x-1/2 w-full max-w-md px-4 z-50">
-          <Alert duration={5000} onDismiss={handleAlertDismiss} showCloseButton>
-            <AlertDescription>{successMessage}</AlertDescription>
-          </Alert>
-        </div>
-      )}
       {authMode !== 'confirmSignUp' && (
         <>
           <div className="flex items-center gap-3 before:h-px before:flex-1 before:bg-border after:h-px after:flex-1 after:bg-border">

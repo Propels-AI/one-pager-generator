@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -11,15 +11,15 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Copy, ExternalLink, Edit, Plus, MoreVertical, Trash2, Share2 } from 'lucide-react';
+import { Copy, ExternalLink, Edit, Plus, MoreVertical, Trash2, Share2, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
-import { useAuth } from '@/components/providers/AuthProvider';
-import { useRouter } from 'next/navigation';
+import { useAuth } from '@/lib/hooks/useAuthWall';
+import { ProtectPage } from '@/components/auth/AuthComponents';
 import { useQuery } from '@tanstack/react-query';
 import { fetchUserOnePagers, type OnePagerFromSchema as OnePagerEntity } from '@/lib/services/entityService';
 import { useDeleteOnePager, usePublishDraft } from '@/lib/hooks/useOnePagerMutations';
@@ -31,9 +31,8 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 
-export default function DashboardPage() {
-  const { user, isLoading: authIsLoading, handleSignOut: amplifySignOut } = useAuth();
-  const router = useRouter();
+function DashboardContent() {
+  const { user, signOut } = useAuth();
 
   const [activeTab, setActiveTab] = useState('published');
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -54,17 +53,11 @@ export default function DashboardPage() {
       const drafts = await fetchUserOnePagers(ownerUserId, 'DRAFT');
       return [...published, ...drafts];
     },
-    enabled: !!ownerUserId && !authIsLoading,
+    enabled: !!ownerUserId,
   });
 
   const publishedOnePagers = useMemo(() => allOnePagers.filter((p) => p.status === 'PUBLISHED'), [allOnePagers]);
   const draftOnePagers = useMemo(() => allOnePagers.filter((p) => p.status === 'DRAFT'), [allOnePagers]);
-
-  useEffect(() => {
-    if (!authIsLoading && !user) {
-      router.replace('/auth/portal');
-    }
-  }, [user, authIsLoading, router]);
 
   const copyToClipboard = async (url: string) => {
     try {
@@ -114,21 +107,7 @@ export default function DashboardPage() {
     });
   };
 
-  if (authIsLoading || (ownerUserId && onePagersIsLoading)) {
-    return (
-      <div className="flex min-h-screen flex-col items-center justify-center">
-        <p>Loading dashboard...</p>
-      </div>
-    );
-  }
-
-  if (!user) {
-    return (
-      <div className="flex min-h-screen flex-col items-center justify-center">
-        <p>Redirecting to login...</p>
-      </div>
-    );
-  }
+  // Don't show a separate loading state - let the content render with loading indicators inline
 
   return (
     <div className="container mx-auto py-8 px-4 sm:px-6 lg:px-8">
@@ -136,11 +115,11 @@ export default function DashboardPage() {
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-gray-900 dark:text-white">My Pages</h1>
           <p className="text-muted-foreground mt-1 sm:mt-2">
-            Manage your draft and published pages, {user.signInDetails?.loginId || user.username}.
+            Manage your draft and published pages, {user?.signInDetails?.loginId || user?.username || 'user'}.
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button onClick={amplifySignOut} variant="outline">
+          <Button onClick={signOut} variant="outline">
             Sign Out
           </Button>
           <Button asChild>
@@ -168,7 +147,14 @@ export default function DashboardPage() {
               <CardDescription>Your live pages that are publicly accessible.</CardDescription>
             </CardHeader>
             <CardContent>
-              {publishedOnePagers.length === 0 ? (
+              {onePagersIsLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <div className="flex items-center space-x-2">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span className="text-sm text-muted-foreground">Loading published pages...</span>
+                  </div>
+                </div>
+              ) : publishedOnePagers.length === 0 ? (
                 <p className="text-center text-muted-foreground py-4">No published pages yet.</p>
               ) : (
                 <Table>
@@ -270,7 +256,14 @@ export default function DashboardPage() {
               <CardDescription>Your work-in-progress pages that haven't been published yet.</CardDescription>
             </CardHeader>
             <CardContent>
-              {draftOnePagers.length === 0 ? (
+              {onePagersIsLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <div className="flex items-center space-x-2">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span className="text-sm text-muted-foreground">Loading draft pages...</span>
+                  </div>
+                </div>
+              ) : draftOnePagers.length === 0 ? (
                 <p className="text-center text-muted-foreground py-4">
                   No drafts yet. Start by creating your first page!
                 </p>
@@ -346,5 +339,13 @@ export default function DashboardPage() {
         </AlertDialogContent>
       </AlertDialog>
     </div>
+  );
+}
+
+export default function DashboardPage() {
+  return (
+    <ProtectPage>
+      <DashboardContent />
+    </ProtectPage>
   );
 }

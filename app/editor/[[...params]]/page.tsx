@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { useAuth } from '@/components/providers/AuthProvider';
+import { useAuth, useAuthWall } from '@/lib/hooks/useAuthWall';
 import { useRouter, useParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { fetchOnePagerById } from '@/lib/services/entityService';
@@ -34,7 +34,7 @@ const Preview = dynamic(() => import('@/components/preview').then((mod) => mod.P
 });
 
 export default function EditorPage() {
-  const { user } = useAuth();
+  const { user, isSignedIn, isLoaded } = useAuth();
   const router = useRouter();
   const params = useParams();
 
@@ -42,6 +42,29 @@ export default function EditorPage() {
   const documentId = Array.isArray(params.params) ? params.params[0] : params.params;
   const isNewDocument = !documentId;
   const onePagerPKToFetch = isNewDocument ? '' : `ONEPAGER#${documentId}`;
+
+  // Auth wall - only protect existing documents, allow new documents for everyone
+  const { shouldRender } = useAuthWall({
+    redirectMessage: 'Editor Access Required',
+    redirectDescription: 'You need to sign in to access this editor page.',
+    autoRedirect: !isNewDocument, // Only auto-redirect for existing documents
+  });
+
+  // For existing documents, enforce authentication
+  if (!isNewDocument) {
+    if (!isLoaded) {
+      return (
+        <div className="flex items-center justify-center min-h-screen">
+          <Loader2 className="h-8 w-8 animate-spin" />
+          <p className="ml-4 text-lg">Checking authentication...</p>
+        </div>
+      );
+    }
+
+    if (!shouldRender) {
+      return null; // Auth wall is handling redirect
+    }
+  }
 
   // Default content for new documents
   const defaultContent: PartialBlock[] = [
@@ -63,7 +86,11 @@ export default function EditorPage() {
       }
       return fetchOnePagerById(onePagerPKToFetch);
     },
-    enabled: !isNewDocument && !!documentId,
+    // Only enable the query if:
+    // 1. It's not a new document (has documentId)
+    // 2. User is authenticated (prevents the JWT error)
+    // 3. Auth loading is complete
+    enabled: !isNewDocument && !!documentId && !!user && isLoaded,
   });
 
   const [editorInstance, setEditorInstance] = useState<BlockNoteEditorType | null>(null);
@@ -178,8 +205,49 @@ export default function EditorPage() {
     }
   };
 
+  // Combined effect for handling post-auth saves (prevents double-save)
   useEffect(() => {
-    if (user && saveIntentAfterAuth && !isAuthDialogOpen && editorInstance) {
+    if (!user || !editorInstance) return;
+
+    // Check for pending localStorage data first (auth redirect flow)
+    const pendingDataString = localStorage.getItem('pendingOnePager');
+    if (pendingDataString && isNewDocument) {
+      try {
+        const pendingData = JSON.parse(pendingDataString);
+        if (pendingData.pendingAction === 'create') {
+          console.log('🔄 Processing pending create data from localStorage:', pendingData);
+
+          // Restore content and title
+          if (pendingData.contentBlocks) {
+            const restoredContent = pendingData.contentBlocks.length > 0 ? pendingData.contentBlocks : defaultContent;
+            setEditorContent(restoredContent);
+            // Update editor content immediately
+            editorInstance.replaceBlocks(editorInstance.document, restoredContent);
+          }
+          if (pendingData.internalTitle) {
+            setInternalTitle(pendingData.internalTitle);
+          }
+
+          // Execute save immediately and clear any dialog intent
+          if (pendingData.saveIntent === 'publish') {
+            executeSaveAndPublish();
+          } else {
+            executeSaveDraft();
+          }
+
+          localStorage.removeItem('pendingOnePager');
+          setSaveIntentAfterAuth(null); // Clear any competing intent
+          return; // Exit early to prevent dialog flow from running
+        }
+      } catch (error) {
+        console.error('Error parsing pending create data from localStorage:', error);
+        localStorage.removeItem('pendingOnePager');
+      }
+    }
+
+    // Only process dialog auth flow if no pending data was found
+    if (saveIntentAfterAuth && !isAuthDialogOpen) {
+      console.log('💬 Executing save from auth dialog success with intent:', saveIntentAfterAuth);
       if (saveIntentAfterAuth === 'publish') {
         executeSaveAndPublish();
       } else {
@@ -187,34 +255,15 @@ export default function EditorPage() {
       }
       setSaveIntentAfterAuth(null);
     }
-  }, [user, saveIntentAfterAuth, isAuthDialogOpen, editorInstance, executeSaveDraft, executeSaveAndPublish]);
-
-  // Load pending data from localStorage on mount (for auth wall flow)
-  useEffect(() => {
-    const pendingDataString = localStorage.getItem('pendingOnePager');
-    if (pendingDataString && isNewDocument) {
-      try {
-        const pendingData = JSON.parse(pendingDataString);
-        if (pendingData.pendingAction === 'create') {
-          console.log('Found pending create data in localStorage:', pendingData);
-          if (pendingData.contentBlocks) {
-            const restoredContent = pendingData.contentBlocks.length > 0 ? pendingData.contentBlocks : defaultContent;
-            setEditorContent(restoredContent);
-          }
-          if (pendingData.internalTitle) {
-            setInternalTitle(pendingData.internalTitle);
-          }
-          if (user && pendingData.saveIntent) {
-            setSaveIntentAfterAuth(pendingData.saveIntent);
-          }
-          localStorage.removeItem('pendingOnePager');
-        }
-      } catch (error) {
-        console.error('Error parsing pending create data from localStorage:', error);
-        localStorage.removeItem('pendingOnePager');
-      }
-    }
-  }, [user, isNewDocument]);
+  }, [
+    user,
+    isNewDocument,
+    editorInstance,
+    saveIntentAfterAuth,
+    isAuthDialogOpen,
+    executeSaveDraft,
+    executeSaveAndPublish,
+  ]);
 
   const handleEditorReady = useCallback((editor: BlockNoteEditorType) => {
     setEditorInstance(editor);
@@ -249,6 +298,7 @@ export default function EditorPage() {
     }
   };
 
+  // Show loading while fetching existing one-pager data
   if (isLoadingOnePager) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -379,8 +429,9 @@ export default function EditorPage() {
       </main>
       {isAuthDialogOpen && (
         <Dialog open={isAuthDialogOpen} onOpenChange={setIsAuthDialogOpen}>
-          <DialogContent className="sm:max-w-[425px] md:max-w-[550px] lg:max-w-[700px] p-0 overflow-y-auto max-h-[90vh]">
+          <DialogContent className="sm:max-w-[425px] p-0 overflow-y-auto max-h-[90vh]">
             <AuthSignInDialog
+              isInDialog={true}
               onAuthSuccess={() => {
                 setIsAuthDialogOpen(false);
                 // The user effect will handle the pending save action

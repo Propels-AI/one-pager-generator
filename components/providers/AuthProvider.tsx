@@ -12,6 +12,7 @@ import {
 } from 'aws-amplify/auth';
 import outputs from '@/amplify_outputs.json';
 import { useRouter } from 'next/navigation';
+import { toast } from 'sonner';
 
 Amplify.configure(outputs, { ssr: true });
 interface AuthContextType {
@@ -52,38 +53,53 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const hubListenerCancel = Hub.listen('auth', ({ payload }) => {
       switch (payload.event) {
         case 'signedIn':
-          checkCurrentUser(); // Re-check user and fetch attributes
-          try {
-            // Check for legacy pendingCreateOnePager (old key)
-            const pendingCreateDataString = localStorage.getItem('pendingCreateOnePager');
-            // Check for new pendingOnePager key (used by editor)
-            const pendingOnePagerString = localStorage.getItem('pendingOnePager');
+          // Re-check user and fetch attributes, then handle redirect
+          checkCurrentUser().then(() => {
+            try {
+              // Check for returnToAfterAuth (for protected pages like editor)
+              const returnToAfterAuth = localStorage.getItem('returnToAfterAuth');
 
-            if (pendingCreateDataString) {
-              const pendingData = JSON.parse(pendingCreateDataString);
-              if (pendingData.returnTo) {
-                console.log('AuthProvider: Redirecting to stored returnTo path:', pendingData.returnTo);
-                router.push(pendingData.returnTo);
+              // Check for legacy pendingCreateOnePager (old key)
+              const pendingCreateDataString = localStorage.getItem('pendingCreateOnePager');
+              // Check for new pendingOnePager key (used by editor)
+              const pendingOnePagerString = localStorage.getItem('pendingOnePager');
+
+              if (returnToAfterAuth) {
+                localStorage.removeItem('returnToAfterAuth');
+                router.push(returnToAfterAuth);
+              } else if (pendingCreateDataString) {
+                const pendingData = JSON.parse(pendingCreateDataString);
+                if (pendingData.returnTo) {
+                  router.push(pendingData.returnTo);
+                } else {
+                  router.push('/dashboard');
+                }
+              } else if (pendingOnePagerString) {
+                // Redirect to editor when there's pending one-pager data
+                // The editor page will handle processing the pending data
+                router.push('/editor');
               } else {
                 router.push('/dashboard');
               }
-            } else if (pendingOnePagerString) {
-              // Don't auto-redirect if there's pending one-pager data
-              // Let the component that set this data handle the redirect
-              console.log('AuthProvider: Found pendingOnePager data, skipping auto-redirect');
-            } else {
+            } catch (error) {
+              // Fallback redirect to dashboard on any localStorage parsing errors
               router.push('/dashboard');
             }
-          } catch (error) {
-            console.error('AuthProvider: Error reading or parsing localStorage for redirect:', error);
-            router.push('/dashboard');
-          }
+          });
           break;
         case 'signedOut':
           setUser(null);
           setUserProfile(null);
           setIsLoading(false);
-          router.push('/auth/portal');
+
+          // Show success message for sign out (with slight delay to ensure it shows after any auth wall messages)
+          setTimeout(() => {
+            toast.success('Successfully signed out', {
+              description: 'You have been signed out of your account.',
+            });
+          }, 100);
+
+          router.push('/sign-in');
           break;
       }
     });
@@ -99,7 +115,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     try {
       await signOut();
     } catch (error) {
-      console.error('Error signing out: ', error);
       setIsLoading(false);
     }
   };

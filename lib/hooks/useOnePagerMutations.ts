@@ -216,7 +216,6 @@ interface SaveAndPublishParams {
 export function useSaveDraft() {
   const createMutation = useCreateOnePager();
   const updateMutation = useUpdateOnePager();
-  const router = useRouter();
 
   return useMutation({
     mutationFn: async ({ ownerUserId, PK, internalTitle, contentBlocks, isNewDocument }: SaveDraftParams) => {
@@ -242,11 +241,8 @@ export function useSaveDraft() {
         description: `"${variables.internalTitle}" saved successfully.`,
       });
 
-      // Navigate to editor with document ID if it's a new document
-      if (variables.isNewDocument && data && 'onePager' in data && data.onePager?.PK) {
-        const uuid = data.onePager.PK.replace('ONEPAGER#', '');
-        router.push(`/editor/${uuid}`);
-      }
+      // Redirect is handled by the underlying createMutation or updateMutation
+      // No need for duplicate navigation logic here
     },
     onError: (error: Error) => {
       console.error('Save draft error:', error);
@@ -260,7 +256,6 @@ export function useSaveDraft() {
 export function useSaveAndPublish() {
   const createMutation = useCreateOnePager();
   const updateMutation = useUpdateOnePager();
-  const router = useRouter();
 
   return useMutation({
     mutationFn: async ({ ownerUserId, PK, internalTitle, contentBlocks, isNewDocument }: SaveAndPublishParams) => {
@@ -286,13 +281,8 @@ export function useSaveAndPublish() {
         description: `"${variables.internalTitle}" published successfully.`,
       });
 
-      // Navigate to public page if published
-      if (data && 'publicSlug' in data && data.publicSlug) {
-        router.push(`/${data.publicSlug}`);
-      } else if (variables.isNewDocument && data && 'onePager' in data && data.onePager?.PK) {
-        const uuid = data.onePager.PK.replace('ONEPAGER#', '');
-        router.push(`/editor/${uuid}`);
-      }
+      // Redirect is handled by the underlying createMutation or updateMutation
+      // No need for duplicate navigation logic here
     },
     onError: (error: Error) => {
       console.error('Publish error:', error);

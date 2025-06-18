@@ -69,7 +69,17 @@ function AuthSignInDialogComponent({ onAuthSuccess, isInDialog = false }: AuthSi
     } else {
       if (nextStep?.signInStep === 'CONFIRM_SIGN_UP') {
         setAuthMode('confirmSignUp');
-        setError('Your account is unconfirmed. Please enter the code sent to your email.');
+        // Clear any existing confirmation code
+        setConfirmationCode('');
+        // Automatically resend confirmation code when account is unconfirmed
+        try {
+          await resendSignUpCode({ username: email });
+          setError('Your account is unconfirmed. A new confirmation code has been sent to your email.');
+          toast.success('Confirmation code sent to your email.');
+        } catch (resendError: any) {
+          console.error('Failed to resend confirmation code:', resendError);
+          setError('Your account is unconfirmed. Please use the "Resend Code" button to get a new confirmation code.');
+        }
       } else {
         console.log('Sign in next step:', nextStep);
         setError(`Sign in requires further steps: ${nextStep?.signInStep || 'unknown'}`);
@@ -196,9 +206,20 @@ function AuthSignInDialogComponent({ onAuthSuccess, isInDialog = false }: AuthSi
     setError(null);
     try {
       await resendSignUpCode({ username: email });
+      // Clear existing code when sending new one
+      setConfirmationCode('');
       toast.success('Confirmation code resent. Please check your email.');
     } catch (err: any) {
-      setError(err.message || 'Failed to resend confirmation code.');
+      console.error('Resend confirmation code error:', err);
+      if (err.name === 'UserNotFoundException') {
+        setError('Account not found. Please try signing up again.');
+      } else if (err.name === 'TooManyRequestsException') {
+        setError('Too many requests. Please wait a moment before requesting another code.');
+      } else if (err.name === 'LimitExceededException') {
+        setError('Daily limit exceeded. Please try again tomorrow or contact support.');
+      } else {
+        setError(err.message || 'Failed to resend confirmation code.');
+      }
     } finally {
       setIsLoading(false);
     }

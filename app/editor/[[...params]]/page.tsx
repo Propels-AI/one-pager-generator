@@ -50,22 +50,6 @@ export default function EditorPage() {
     autoRedirect: !isNewDocument, // Only auto-redirect for existing documents
   });
 
-  // For existing documents, enforce authentication
-  if (!isNewDocument) {
-    if (!isLoaded) {
-      return (
-        <div className="flex items-center justify-center min-h-screen">
-          <Loader2 className="h-8 w-8 animate-spin" />
-          <p className="ml-4 text-lg">Checking authentication...</p>
-        </div>
-      );
-    }
-
-    if (!shouldRender) {
-      return null; // Auth wall is handling redirect
-    }
-  }
-
   // Default content for new documents
   const defaultContent: PartialBlock[] = [
     {
@@ -74,7 +58,7 @@ export default function EditorPage() {
     },
   ];
 
-  // Action-specific mutations
+  // Action-specific mutations - DECLARE ALL HOOKS BEFORE ANY CONDITIONAL RETURNS
   const saveDraftMutation = useSaveDraft();
   const saveAndPublishMutation = useSaveAndPublish();
 
@@ -272,31 +256,53 @@ export default function EditorPage() {
     });
   }, []);
 
-  const handleTitleEdit = () => {
+  const handleTitleEdit = useCallback(() => {
     setIsEditingTitle(true);
-  };
+  }, []);
 
-  const handleTitleSave = (newTitle: string) => {
-    setInternalTitle(newTitle.trim() || 'Untitled Page');
-    setIsEditingTitle(false);
-    // Auto-save the title change if user is authenticated and document exists
-    if (user && !isNewDocument && editorInstance) {
-      // Trigger save with current publish status
-      const isCurrentlyPublished = existingOnePager?.status === 'PUBLISHED';
-      if (isCurrentlyPublished) {
-        executeSaveAndPublish();
-      } else {
-        executeSaveDraft();
+  const handleTitleSave = useCallback(
+    (newTitle: string) => {
+      setInternalTitle(newTitle.trim() || 'Untitled Page');
+      setIsEditingTitle(false);
+      // Auto-save the title change if user is authenticated and document exists
+      if (user && !isNewDocument && editorInstance) {
+        // Trigger save with current publish status
+        const isCurrentlyPublished = existingOnePager?.status === 'PUBLISHED';
+        if (isCurrentlyPublished) {
+          executeSaveAndPublish();
+        } else {
+          executeSaveDraft();
+        }
       }
-    }
-  };
+    },
+    [user, isNewDocument, editorInstance, existingOnePager, executeSaveAndPublish, executeSaveDraft]
+  );
 
-  const handleTitleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter' || e.key === 'Escape') {
-      e.preventDefault();
-      handleTitleSave((e.target as HTMLInputElement).value);
+  const handleTitleKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLInputElement>) => {
+      if (e.key === 'Enter' || e.key === 'Escape') {
+        e.preventDefault();
+        handleTitleSave((e.target as HTMLInputElement).value);
+      }
+    },
+    [handleTitleSave]
+  );
+
+  // For existing documents, enforce authentication
+  if (!isNewDocument) {
+    if (!isLoaded) {
+      return (
+        <div className="flex items-center justify-center min-h-screen">
+          <Loader2 className="h-8 w-8 animate-spin" />
+          <p className="ml-4 text-lg">Checking authentication...</p>
+        </div>
+      );
     }
-  };
+
+    if (!shouldRender) {
+      return null; // Auth wall is handling redirect
+    }
+  }
 
   // Show loading while fetching existing one-pager data
   if (isLoadingOnePager) {

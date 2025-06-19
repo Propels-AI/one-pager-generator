@@ -8,3 +8,4 @@ export * from './socialItem';
 export * from './teamItem';
 export * from './testimonialItem';
 export * from './timelineItem';
+export * from './imageCarouselItem';

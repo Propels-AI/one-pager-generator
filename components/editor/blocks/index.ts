@@ -10,3 +10,4 @@ export * from './TeamBlock';
 export * from './TestimonialBlock';
 export * from './SocialBlock';
 export * from './TimelineBlock';
+export * from './ImageCarouselBlock';

@@ -31,6 +31,7 @@ import {
   problemBlockSpec,
   SocialBlockSpec,
   TimelineBlockSpec,
+  ImageCarouselBlockSpec,
 } from './blocks';
 import {
   insertProblemSectionItem,
@@ -43,6 +44,7 @@ import {
   insertFaq,
   insertSocial,
   insertTimelineItem,
+  insertImageCarouselItem,
 } from './slash-items';
 
 const getCustomSlashMenuItems = (editor: CustomSchemaEditor): DefaultReactSuggestionItem[] => [
@@ -56,6 +58,7 @@ const getCustomSlashMenuItems = (editor: CustomSchemaEditor): DefaultReactSugges
   insertFaq(editor),
   insertSocial(editor),
   insertTimelineItem(editor),
+  insertImageCarouselItem(editor),
   ...getDefaultReactSlashMenuItems(editor),
 ];
 
@@ -73,6 +76,7 @@ export const customSchema = BlockNoteSchema.create({
     faq: FaqBlockSpec,
     social: SocialBlockSpec,
     timeline: TimelineBlockSpec,
+    imageCarousel: ImageCarouselBlockSpec,
   },
   inlineContentSpecs: defaultInlineContentSpecs,
   styleSpecs: defaultStyleSpecs,

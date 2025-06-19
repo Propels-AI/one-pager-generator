@@ -40,14 +40,14 @@ export const EditBlockPopover: React.FC<EditBlockPopoverProps> = ({
           <Pencil className="h-4 w-4" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className={`${widthClasses[width]} p-0 max-h-[80vh] flex flex-col`}>
+      <PopoverContent className={`${widthClasses[width]} p-0 max-h-[70vh] flex flex-col`}>
         {title && (
           <div className="p-4 pb-0 flex-shrink-0 border-b">
             <h3 className="font-semibold text-lg">{title}</h3>
           </div>
         )}
 
-        <div className="flex-1 overflow-y-auto p-4 space-y-6">{children}</div>
+        <div className="flex-1 overflow-y-auto p-4 space-y-4 min-h-0">{children}</div>
 
         <div className="p-4 flex-shrink-0 border-t bg-white">
           <Button onClick={onSave} className="w-full">

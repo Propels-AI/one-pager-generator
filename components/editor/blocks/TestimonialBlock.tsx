@@ -6,12 +6,11 @@ import { defaultBlockSpecs } from '@blocknote/core';
 import { MdFormatQuote } from 'react-icons/md';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Card, CardContent, CardFooter } from '@/components/ui/card';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Trash2, Pencil } from 'lucide-react';
 import ImageField from '@/components/ui/ImageField';
+import { EditBlockPopover, FormField, FormSection, ItemCard } from '../EditBlockPopover';
 
 interface SubTestimonialItem {
   id: string;
@@ -156,129 +155,96 @@ export const testimonialBlockSpec = createReactBlockSpec(testimonialBlockConfig,
       <div className="relative group">
         {staticContent}
         {editor.isEditable && (
-          <Popover open={isEditing} onOpenChange={setIsEditing}>
-            <PopoverTrigger asChild>
-              <Button
-                variant="outline"
-                size="icon"
-                className="absolute top-4 right-4 h-8 w-8 bg-white opacity-100 md:opacity-0 group-hover:md:opacity-100 transition-opacity duration-300 z-10"
-              >
-                <Pencil className="h-4 w-4" />
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-[500px] p-4" side="bottom" align="center">
-              <div className="space-y-6 max-h-[60vh] overflow-y-auto pr-2">
-                <div>
-                  <h4 className="font-medium leading-none mb-4">Edit Main Testimonial</h4>
-                  <div className="space-y-4">
-                    <div className="grid gap-2">
-                      <ImageField
-                        label="Main Testimonial Image"
-                        value={currentMainImageUrl}
-                        onChange={setCurrentMainImageUrl}
-                        metadata={{ blockType: 'testimonial', onePagerId: block.id }}
-                        placeholder="Upload main testimonial image"
-                      />
-                    </div>
-                    <div className="grid gap-2">
-                      <Label htmlFor="mainQuote">Main Quote</Label>
-                      <Input
-                        id="mainQuote"
-                        value={currentMainQuote}
-                        onChange={(e) => setCurrentMainQuote(e.target.value)}
-                      />
-                    </div>
-                    <div className="grid gap-2">
-                      <Label htmlFor="mainAuthorName">Author Name</Label>
-                      <Input
-                        id="mainAuthorName"
-                        value={currentMainAuthorName}
-                        onChange={(e) => setCurrentMainAuthorName(e.target.value)}
-                      />
-                    </div>
-                    <div className="grid gap-2">
-                      <Label htmlFor="mainAuthorTitle">Author Title</Label>
-                      <Input
-                        id="mainAuthorTitle"
-                        value={currentMainAuthorTitle}
-                        onChange={(e) => setCurrentMainAuthorTitle(e.target.value)}
-                      />
-                    </div>
-                  </div>
-                </div>
+          <EditBlockPopover
+            isOpen={isEditing}
+            onOpenChange={setIsEditing}
+            onSave={() => {
+              editor.updateBlock(block, {
+                props: {
+                  mainImageUrl: currentMainImageUrl,
+                  mainQuote: currentMainQuote,
+                  mainAuthorName: currentMainAuthorName,
+                  mainAuthorTitle: currentMainAuthorTitle,
+                  subItems: JSON.stringify(currentSubItems),
+                },
+              });
+              setIsEditing(false);
+            }}
+            width="lg"
+          >
+            <FormField>
+              <ImageField
+                label="Main Testimonial Image"
+                value={currentMainImageUrl}
+                onChange={setCurrentMainImageUrl}
+                metadata={{ blockType: 'testimonial', onePagerId: block.id }}
+                placeholder="Upload main testimonial image"
+              />
+            </FormField>
+            <FormField>
+              <Label htmlFor="mainQuote">Main Quote</Label>
+              <Input id="mainQuote" value={currentMainQuote} onChange={(e) => setCurrentMainQuote(e.target.value)} />
+            </FormField>
+            <FormField>
+              <Label htmlFor="mainAuthorName">Author Name</Label>
+              <Input
+                id="mainAuthorName"
+                value={currentMainAuthorName}
+                onChange={(e) => setCurrentMainAuthorName(e.target.value)}
+              />
+            </FormField>
+            <FormField>
+              <Label htmlFor="mainAuthorTitle">Author Title</Label>
+              <Input
+                id="mainAuthorTitle"
+                value={currentMainAuthorTitle}
+                onChange={(e) => setCurrentMainAuthorTitle(e.target.value)}
+              />
+            </FormField>
 
-                <div className="border-t pt-6">
-                  <h4 className="font-medium leading-none mb-4">Edit Sub-Testimonials</h4>
-                  <div className="space-y-4">
-                    {currentSubItems.map((item, index) => (
-                      <div key={item.id} className="p-4 border rounded-md space-y-3 relative">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="absolute top-2 right-2 h-7 w-7 text-black"
-                          onClick={() => removeSubItem(index)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                        <div className="grid gap-2">
-                          <Label>Quote</Label>
-                          <Input
-                            value={item.quote}
-                            onChange={(e) => handleSubItemChange(index, 'quote', e.target.value)}
-                          />
-                        </div>
-                        <div className="grid gap-2">
-                          <ImageField
-                            label="Avatar Image"
-                            value={item.avatarUrl}
-                            onChange={(url) => handleSubItemChange(index, 'avatarUrl', url)}
-                            metadata={{ blockType: 'testimonial-avatar', onePagerId: block.id }}
-                            placeholder="Upload testimonial avatar"
-                          />
-                        </div>
-                        <div className="grid gap-2">
-                          <Label>Author Name</Label>
-                          <Input
-                            value={item.authorName}
-                            onChange={(e) => handleSubItemChange(index, 'authorName', e.target.value)}
-                          />
-                        </div>
-                        <div className="grid gap-2">
-                          <Label>Author Title</Label>
-                          <Input
-                            value={item.authorTitle}
-                            onChange={(e) => handleSubItemChange(index, 'authorTitle', e.target.value)}
-                          />
-                        </div>
+            <FormSection title="Sub-Testimonials">
+              {currentSubItems.map((item, index) => (
+                <ItemCard key={item.id} onRemove={() => removeSubItem(index)}>
+                  <FormField>
+                    <Label>Quote</Label>
+                    <Input value={item.quote} onChange={(e) => handleSubItemChange(index, 'quote', e.target.value)} />
+                  </FormField>
+                  <FormField>
+                    <div className="w-full flex justify-center">
+                      <div className="max-w-sm">
+                        <ImageField
+                          label="Avatar Image"
+                          value={item.avatarUrl}
+                          onChange={(url) => handleSubItemChange(index, 'avatarUrl', url)}
+                          metadata={{ blockType: 'testimonial-avatar', onePagerId: block.id }}
+                          placeholder="Upload testimonial avatar"
+                        />
                       </div>
-                    ))}
+                    </div>
+                  </FormField>
+                  <div className="grid grid-cols-2 gap-3">
+                    <FormField>
+                      <Label>Author Name</Label>
+                      <Input
+                        value={item.authorName}
+                        onChange={(e) => handleSubItemChange(index, 'authorName', e.target.value)}
+                      />
+                    </FormField>
+                    <FormField>
+                      <Label>Author Title</Label>
+                      <Input
+                        value={item.authorTitle}
+                        onChange={(e) => handleSubItemChange(index, 'authorTitle', e.target.value)}
+                      />
+                    </FormField>
                   </div>
-                  <Button variant="outline" className="mt-4 w-full" onClick={addSubItem}>
-                    Add Testimonial
-                  </Button>
-                </div>
-
-                <div className="my-4 border-t"></div>
-                <Button
-                  onClick={() => {
-                    editor.updateBlock(block, {
-                      props: {
-                        mainImageUrl: currentMainImageUrl,
-                        mainQuote: currentMainQuote,
-                        mainAuthorName: currentMainAuthorName,
-                        mainAuthorTitle: currentMainAuthorTitle,
-                        subItems: JSON.stringify(currentSubItems),
-                      },
-                    });
-                    setIsEditing(false);
-                  }}
-                  className="w-full mt-4"
-                >
-                  Save
-                </Button>
-              </div>
-            </PopoverContent>
-          </Popover>
+                </ItemCard>
+              ))}
+              <Button variant="outline" className="mt-4 w-full" onClick={addSubItem}>
+                Add Testimonial
+              </Button>
+            </FormSection>
+          </EditBlockPopover>
         )}
       </div>
     );

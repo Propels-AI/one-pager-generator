@@ -2,14 +2,14 @@
 
 import React, { useState, useEffect } from 'react';
 import { createReactBlockSpec } from '@blocknote/react';
-import { Pencil, Trash2, Users } from 'lucide-react';
+import { Users } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import ImageField from '@/components/ui/ImageField';
+import { EditBlockPopover, FormField, FormSection, ItemCard } from '../EditBlockPopover';
 
 // Interfaces
 interface TeamMember {
@@ -183,9 +183,9 @@ export const TeamBlockSpec = createReactBlockSpec(teamBlockConfig, {
           teamMembers={parsedTeamMembers}
         />
         {editor.isEditable && (
-          <Popover
-            open={isEditing}
-            onOpenChange={(open) => {
+          <EditBlockPopover
+            isOpen={isEditing}
+            onOpenChange={(open: boolean) => {
               setIsEditing(open);
               if (open) {
                 setCurrentMainHeading(block.props.mainHeading);
@@ -198,109 +198,84 @@ export const TeamBlockSpec = createReactBlockSpec(teamBlockConfig, {
                 }
               }
             }}
+            onSave={handleSave}
+            width="lg"
           >
-            <PopoverTrigger asChild>
-              <Button
-                variant="outline"
-                size="icon"
-                className="absolute top-4 right-4 h-8 w-8 bg-white opacity-100 md:opacity-0 group-hover:md:opacity-100 transition-opacity duration-300 z-10"
-              >
-                <Pencil className="h-4 w-4" />
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-[95vw] sm:w-[600px] lg:w-[750px] p-0 max-h-[80vh] flex flex-col">
-              <div className="flex-1 overflow-y-auto p-4 space-y-6">
-                <div className="space-y-2">
-                  <Label htmlFor="teamMainHeading">Main Heading</Label>
-                  <Input
-                    id="teamMainHeading"
-                    value={currentMainHeading}
-                    onChange={(e) => setCurrentMainHeading(e.target.value)}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="teamSubHeading">Subheading</Label>
-                  <Input
-                    id="teamSubHeading"
-                    value={currentSubHeading}
-                    onChange={(e) => setCurrentSubHeading(e.target.value)}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="teamDesc">Description Paragraph</Label>
-                  <Textarea
-                    id="teamDesc"
-                    value={currentDescriptionParagraph}
-                    onChange={(e) => setCurrentDescriptionParagraph(e.target.value)}
-                  />
-                </div>
+            <FormField>
+              <Label htmlFor="teamMainHeading">Main Heading</Label>
+              <Input
+                id="teamMainHeading"
+                value={currentMainHeading}
+                onChange={(e) => setCurrentMainHeading(e.target.value)}
+              />
+            </FormField>
 
-                <div className="border-t pt-4 mt-4">
-                  <h4 className="font-medium leading-none mb-3">Team Members</h4>
-                  {currentTeamMembers.map((member, index) => (
-                    <div key={member.id} className="p-3 pt-4 border rounded-md space-y-3 mb-3 relative">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="absolute top-1 right-1 h-7 w-7 text-destructive hover:bg-destructive/10"
-                        onClick={() => removeMember(member.id)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                      <div className="grid grid-cols-2 gap-3">
-                        <div className="space-y-2">
-                          <Label htmlFor={`memberName-${member.id}`}>Name</Label>
-                          <Input
-                            id={`memberName-${member.id}`}
-                            value={member.name}
-                            onChange={(e) => handleMemberChange(index, 'name', e.target.value)}
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor={`memberRole-${member.id}`}>Role</Label>
-                          <Input
-                            id={`memberRole-${member.id}`}
-                            value={member.role}
-                            onChange={(e) => handleMemberChange(index, 'role', e.target.value)}
-                          />
-                        </div>
-                      </div>
-                      <div className="w-full flex justify-center">
-                        <div className="max-w-md">
-                          <ImageField
-                            label="Avatar Image"
-                            value={member.avatar}
-                            onChange={(url) => handleMemberChange(index, 'avatar', url)}
-                            metadata={{ blockType: 'team', onePagerId: block.id }}
-                            placeholder="Upload avatar"
-                          />
-                        </div>
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor={`memberDesc-${member.id}`}>Description</Label>
-                        <Textarea
-                          id={`memberDesc-${member.id}`}
-                          value={member.description}
-                          onChange={(e) => handleMemberChange(index, 'description', e.target.value)}
-                          className="min-h-[60px]"
-                        />
-                      </div>
+            <FormField>
+              <Label htmlFor="teamSubHeading">Subheading</Label>
+              <Input
+                id="teamSubHeading"
+                value={currentSubHeading}
+                onChange={(e) => setCurrentSubHeading(e.target.value)}
+              />
+            </FormField>
+
+            <FormField>
+              <Label htmlFor="teamDesc">Description Paragraph</Label>
+              <Textarea
+                id="teamDesc"
+                value={currentDescriptionParagraph}
+                onChange={(e) => setCurrentDescriptionParagraph(e.target.value)}
+              />
+            </FormField>
+
+            <FormSection title="Team Members">
+              {currentTeamMembers.map((member, index) => (
+                <ItemCard key={member.id} onRemove={() => removeMember(member.id)}>
+                  <div className="grid grid-cols-2 gap-3">
+                    <FormField>
+                      <Label htmlFor={`memberName-${member.id}`}>Name</Label>
+                      <Input
+                        id={`memberName-${member.id}`}
+                        value={member.name}
+                        onChange={(e) => handleMemberChange(index, 'name', e.target.value)}
+                      />
+                    </FormField>
+                    <FormField>
+                      <Label htmlFor={`memberRole-${member.id}`}>Role</Label>
+                      <Input
+                        id={`memberRole-${member.id}`}
+                        value={member.role}
+                        onChange={(e) => handleMemberChange(index, 'role', e.target.value)}
+                      />
+                    </FormField>
+                  </div>
+                  <div className="w-full flex justify-center">
+                    <div className="max-w-md">
+                      <ImageField
+                        label="Avatar Image"
+                        value={member.avatar}
+                        onChange={(url) => handleMemberChange(index, 'avatar', url)}
+                        metadata={{ blockType: 'team', onePagerId: block.id }}
+                        placeholder="Upload avatar"
+                      />
                     </div>
-                  ))}
-                  <Button variant="outline" className="mt-2 w-full" onClick={addMember}>
-                    Add Team Member
-                  </Button>
-                  <div className="pb-4"></div>
-                </div>
-              </div>
-
-              <div className="p-4 flex-shrink-0 border-t bg-white">
-                <Button onClick={handleSave} className="w-full">
-                  Save Changes
-                </Button>
-              </div>
-            </PopoverContent>
-          </Popover>
+                  </div>
+                  <FormField>
+                    <Label htmlFor={`memberDesc-${member.id}`}>Description</Label>
+                    <Textarea
+                      id={`memberDesc-${member.id}`}
+                      value={member.description}
+                      onChange={(e) => handleMemberChange(index, 'description', e.target.value)}
+                      className="min-h-[60px]"
+                    />
+                  </FormField>
+                </ItemCard>
+              ))}
+              <Button variant="outline" className="mt-2 w-full" onClick={addMember}>
+                Add Team Member
+              </Button>
+            </FormSection>
+          </EditBlockPopover>
         )}
       </div>
     );

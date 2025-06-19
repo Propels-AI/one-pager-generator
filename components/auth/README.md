@@ -89,6 +89,40 @@ function Navigation() {
 }
 ```
 
+### `<RedirectToDashboard>` - Declarative Post-Auth Redirect
+
+```tsx
+import { SignedIn, SignedOut, RedirectToDashboard } from '@/components/auth/AuthComponents';
+
+// Perfect for sign-in pages
+export default function SignInPage() {
+  return (
+    <>
+      <SignedIn>
+        <RedirectToDashboard />
+      </SignedIn>
+      <SignedOut>
+        <AuthSignInDialog />
+      </SignedOut>
+    </>
+  );
+}
+
+// Custom redirect destination
+export default function OnboardingPage() {
+  return (
+    <>
+      <SignedIn>
+        <RedirectToDashboard to="/onboarding/complete" />
+      </SignedIn>
+      <SignedOut>
+        <OnboardingAuthDialog />
+      </SignedOut>
+    </>
+  );
+}
+```
+
 ### `<ProtectPage>` - Entire Page Protection
 
 ```tsx
@@ -261,7 +295,24 @@ export default function SettingsPage() {
 }
 ```
 
-### 2. **Conditional UI Based on Auth**
+### 2. **Sign-In Page with Post-Auth Redirect**
+
+```tsx
+export default function SignInPage() {
+  return (
+    <>
+      <SignedIn>
+        <RedirectToDashboard />
+      </SignedIn>
+      <SignedOut>
+        <AuthSignInDialog />
+      </SignedOut>
+    </>
+  );
+}
+```
+
+### 3. **Conditional UI Based on Auth**
 
 ```tsx
 function Header() {
@@ -279,7 +330,7 @@ function Header() {
 }
 ```
 
-### 3. **Custom Fallback Handling**
+### 4. **Custom Fallback Handling**
 
 ```tsx
 function PremiumFeature() {
@@ -301,7 +352,7 @@ function PremiumFeature() {
 }
 ```
 
-### 4. **Role-Based Access**
+### 5. **Role-Based Access**
 
 ```tsx
 function AdminSection() {
@@ -418,6 +469,109 @@ function GoodProtection() {
 4. **User feedback**: Always provide loading and error states
 5. **Consistent patterns**: Stick to the same auth pattern across similar components
 
+## 🔄 OAuth Redirect Management
+
+### Architecture Overview
+
+Our authentication system implements a **singleton-based coordination system** for managing OAuth redirects, eliminating race conditions between different redirect sources.
+
+### The Problem
+
+In OAuth flows, multiple systems attempt to redirect simultaneously:
+
+1. **AuthProvider Hub Listener** (imperative, event-driven)
+2. **Declarative Components** (`<RedirectToDashboard>`)
+3. **Auth Wall Hooks** (`useAuthWall`)
+
+This creates race conditions and unpredictable behavior.
+
+### The Solution
+
+#### Single Source of Truth
+
+- **Centralized state management** via singleton pattern
+- **Priority-based redirect resolution**
+- **Type-safe interfaces** for all redirect requests
+- **Event-driven coordination** between components
+
+#### Key Benefits
+
+✅ **No Race Conditions** - Single coordination point  
+✅ **No setTimeout Hacks** - Event-driven architecture  
+✅ **Type Safety** - Full TypeScript support  
+✅ **Testable** - Clean separation of concerns  
+✅ **Maintainable** - Clear ownership boundaries
+
+### RedirectManager API
+
+#### Core Types
+
+```typescript
+type RedirectReason =
+  | 'pending-onepager' // Editor draft/publish flow
+  | 'pending-create' // Legacy create flow
+  | 'return-to-path' // General returnTo
+  | 'default-signin'; // Default sign-in redirect
+
+interface RedirectRequest {
+  to: string; // Destination URL
+  reason: RedirectReason; // Why this redirect is happening
+  replace?: boolean; // Use router.replace vs router.push
+  data?: any; // Associated data (draft content, etc.)
+}
+```
+
+#### RedirectManager Class
+
+```typescript
+class RedirectManager {
+  // Called by AuthProvider on OAuth completion
+  handleOAuthRedirect(): RedirectRequest | null;
+
+  // Called by components to check if they should defer
+  shouldDeferRedirect(): boolean;
+
+  // Subscribe to redirect state changes
+  subscribe(listener: (request: RedirectRequest | null) => void): () => void;
+
+  // Reset state (testing)
+  reset(): void;
+}
+```
+
+### Usage Patterns
+
+#### AuthProvider Integration
+
+```typescript
+// In AuthProvider Hub listener
+const redirectRequest = redirectManager.handleOAuthRedirect();
+if (redirectRequest) {
+  console.log('OAuth redirect:', redirectRequest);
+  router[redirectRequest.replace ? 'replace' : 'push'](redirectRequest.to);
+}
+```
+
+#### Component Integration
+
+```typescript
+// In RedirectToDashboard component
+if (redirectManager.shouldDeferRedirect()) {
+  console.log('Deferring to OAuth redirect manager');
+  return;
+}
+// Proceed with default redirect
+```
+
+### Priority System
+
+The redirect manager implements a clear priority hierarchy:
+
+1. **Priority 1: Pending OnePager** - Editor draft/publish flows
+2. **Priority 2: Legacy Create** - Backward compatibility
+3. **Priority 3: Return Path** - General auth wall redirects
+4. **Default: Component Handling** - Standard sign-in flows
+
 ## 🎓 Quick Start Guide
 
 ### For New Developers
@@ -436,3 +590,4 @@ function GoodProtection() {
 | Auth state in logic    | `useAuth()`              | API calls, form validation |
 | Custom protection      | `useAuthWall()`          | Premium features           |
 | Complex fallbacks      | `<AuthGuard>`            | Role-based content         |
+| Post-auth redirects    | `<RedirectToDashboard>`  | Sign-in, onboarding pages  |

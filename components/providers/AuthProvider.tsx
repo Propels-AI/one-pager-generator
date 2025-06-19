@@ -10,9 +10,11 @@ import {
   type AuthUser,
   type FetchUserAttributesOutput,
 } from 'aws-amplify/auth';
+import 'aws-amplify/auth/enable-oauth-listener';
 import outputs from '@/amplify_outputs.json';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
+import { redirectManager } from '@/lib/utils/redirectManager';
 
 Amplify.configure(outputs, { ssr: true });
 interface AuthContextType {
@@ -31,8 +33,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const router = useRouter();
 
   useEffect(() => {
-    const checkCurrentUser = async () => {
-      setIsLoading(true);
+    const checkCurrentUser = async (fromHubEvent = false) => {
+      // Only show loading on initial check, not on Hub events
+      if (!fromHubEvent) {
+        setIsLoading(true);
+      }
       try {
         const cognitoUser = await getCurrentUser();
         setUser(cognitoUser);
@@ -48,42 +53,35 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
     };
 
-    checkCurrentUser();
+    checkCurrentUser(false);
 
     const hubListenerCancel = Hub.listen('auth', ({ payload }) => {
       switch (payload.event) {
         case 'signedIn':
-          // Re-check user and fetch attributes, then handle redirect
-          checkCurrentUser().then(() => {
+          // Re-check user and fetch attributes, then handle conditional redirects
+          checkCurrentUser(true).then(() => {
             try {
-              // Check for returnToAfterAuth (for protected pages like editor)
-              const returnToAfterAuth = localStorage.getItem('returnToAfterAuth');
-
-              // Check for legacy pendingCreateOnePager (old key)
-              const pendingCreateDataString = localStorage.getItem('pendingCreateOnePager');
-              // Check for new pendingOnePager key (used by editor)
-              const pendingOnePagerString = localStorage.getItem('pendingOnePager');
-
-              if (returnToAfterAuth) {
-                localStorage.removeItem('returnToAfterAuth');
-                router.push(returnToAfterAuth);
-              } else if (pendingCreateDataString) {
-                const pendingData = JSON.parse(pendingCreateDataString);
-                if (pendingData.returnTo) {
-                  router.push(pendingData.returnTo);
-                } else {
-                  router.push('/dashboard');
+              // Clean up OAuth callback URL parameters
+              if (typeof window !== 'undefined' && window.location.search) {
+                const urlParams = new URLSearchParams(window.location.search);
+                if (urlParams.has('code') || urlParams.has('state')) {
+                  // Clean URL by replacing with clean path
+                  window.history.replaceState({}, '', window.location.pathname);
                 }
-              } else if (pendingOnePagerString) {
-                // Redirect to editor when there's pending one-pager data
-                // The editor page will handle processing the pending data
-                router.push('/editor');
-              } else {
-                router.push('/dashboard');
+              }
+
+              // Use professional redirect manager to coordinate OAuth redirects
+              const redirectRequest = redirectManager.handleOAuthRedirect();
+
+              if (redirectRequest) {
+                if (redirectRequest.replace) {
+                  router.replace(redirectRequest.to);
+                } else {
+                  router.push(redirectRequest.to);
+                }
               }
             } catch (error) {
-              // Fallback redirect to dashboard on any localStorage parsing errors
-              router.push('/dashboard');
+              // Silently handle error - redirect manager will handle fallbacks
             }
           });
           break;

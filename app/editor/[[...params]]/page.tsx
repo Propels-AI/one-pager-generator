@@ -149,6 +149,9 @@ export default function EditorPage() {
     } else {
       // Store state for auth wall (new document flow)
       if (isNewDocument) {
+        // Clear any existing returnTo to prevent conflicts
+        localStorage.removeItem('returnToAfterAuth');
+
         localStorage.setItem(
           'pendingOnePager',
           JSON.stringify({
@@ -173,6 +176,9 @@ export default function EditorPage() {
     } else {
       // Store state for auth wall (new document flow)
       if (isNewDocument) {
+        // Clear any existing returnTo to prevent conflicts
+        localStorage.removeItem('returnToAfterAuth');
+
         localStorage.setItem(
           'pendingOnePager',
           JSON.stringify({
@@ -189,65 +195,54 @@ export default function EditorPage() {
     }
   };
 
-  // Combined effect for handling post-auth saves (prevents double-save)
+  // Effect to restore data from localStorage after OAuth redirect
   useEffect(() => {
-    if (!user || !editorInstance) return;
+    // Only check for pending data on new documents when user becomes available
+    if (!user || !isNewDocument) return;
 
-    // Check for pending localStorage data first (auth redirect flow)
     const pendingDataString = localStorage.getItem('pendingOnePager');
-    if (pendingDataString && isNewDocument) {
+    if (pendingDataString) {
       try {
         const pendingData = JSON.parse(pendingDataString);
         if (pendingData.pendingAction === 'create') {
-          console.log('🔄 Processing pending create data from localStorage:', pendingData);
-
-          // Restore content and title
-          if (pendingData.contentBlocks) {
-            const restoredContent = pendingData.contentBlocks.length > 0 ? pendingData.contentBlocks : defaultContent;
-            setEditorContent(restoredContent);
-            // Update editor content immediately
-            editorInstance.replaceBlocks(editorInstance.document, restoredContent);
-          }
+          // Restore title immediately
           if (pendingData.internalTitle) {
             setInternalTitle(pendingData.internalTitle);
           }
 
-          // Execute save immediately and clear any dialog intent
-          if (pendingData.saveIntent === 'publish') {
-            executeSaveAndPublish();
-          } else {
-            executeSaveDraft();
+          // Set initial content that will be loaded by the editor
+          if (pendingData.contentBlocks) {
+            const restoredContent = pendingData.contentBlocks.length > 0 ? pendingData.contentBlocks : defaultContent;
+            setInitialContent(restoredContent);
+            setEditorContent(restoredContent);
+          }
+
+          // Store the save intent to execute once editor is ready
+          if (pendingData.saveIntent) {
+            setSaveIntentAfterAuth(pendingData.saveIntent);
           }
 
           localStorage.removeItem('pendingOnePager');
-          setSaveIntentAfterAuth(null); // Clear any competing intent
-          return; // Exit early to prevent dialog flow from running
         }
       } catch (error) {
-        console.error('Error parsing pending create data from localStorage:', error);
+        console.error('Error parsing pending data from localStorage:', error);
         localStorage.removeItem('pendingOnePager');
       }
     }
+  }, [user, isNewDocument]);
 
-    // Only process dialog auth flow if no pending data was found
-    if (saveIntentAfterAuth && !isAuthDialogOpen) {
-      console.log('💬 Executing save from auth dialog success with intent:', saveIntentAfterAuth);
-      if (saveIntentAfterAuth === 'publish') {
-        executeSaveAndPublish();
-      } else {
-        executeSaveDraft();
-      }
-      setSaveIntentAfterAuth(null);
+  // Separate effect to handle saving once editor is ready
+  useEffect(() => {
+    if (!user || !editorInstance || !saveIntentAfterAuth) return;
+
+    if (saveIntentAfterAuth === 'publish') {
+      executeSaveAndPublish();
+    } else {
+      executeSaveDraft();
     }
-  }, [
-    user,
-    isNewDocument,
-    editorInstance,
-    saveIntentAfterAuth,
-    isAuthDialogOpen,
-    executeSaveDraft,
-    executeSaveAndPublish,
-  ]);
+
+    setSaveIntentAfterAuth(null);
+  }, [user, editorInstance, saveIntentAfterAuth, executeSaveDraft, executeSaveAndPublish]);
 
   const handleEditorReady = useCallback((editor: BlockNoteEditorType) => {
     setEditorInstance(editor);

@@ -15,6 +15,7 @@ import {
   resendSignUpCode,
   resetPassword,
   confirmResetPassword,
+  signInWithRedirect,
   type SignUpOutput,
 } from 'aws-amplify/auth';
 import { Loader2 } from 'lucide-react';
@@ -260,6 +261,16 @@ function AuthSignInDialogComponent({ onAuthSuccess, isInDialog = false }: AuthSi
     setNewPassword('');
     setConfirmationCode('');
     setError('Password successfully reset. Please sign in with your new password.');
+  };
+
+  const handleGoogleSignIn = async () => {
+    setError(null);
+    try {
+      await signInWithRedirect({ provider: 'Google' });
+    } catch (err: any) {
+      console.error('Google sign-in error:', err);
+      setError(err.message || 'Failed to sign in with Google. Please try again.');
+    }
   };
 
   return (
@@ -586,7 +597,7 @@ function AuthSignInDialogComponent({ onAuthSuccess, isInDialog = false }: AuthSi
             variant="outline"
             className="w-full flex items-center justify-center gap-2"
             disabled={isLoading}
-            // onClick={() => handleOAuthSignIn('google')} // Placeholder for Google OAuth
+            onClick={handleGoogleSignIn}
           >
             <GoogleIcon className="size-4" aria-hidden={true} />
             <span>Login with Google</span>

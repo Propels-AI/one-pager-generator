@@ -208,91 +208,97 @@ export const TeamBlockSpec = createReactBlockSpec(teamBlockConfig, {
                 <Pencil className="h-4 w-4" />
               </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-[600px] p-4 space-y-6 max-h-[80vh] overflow-y-auto pr-3">
-              <div>
-                <Label htmlFor="teamMainHeading">Main Heading</Label>
-                <Input
-                  id="teamMainHeading"
-                  value={currentMainHeading}
-                  onChange={(e) => setCurrentMainHeading(e.target.value)}
-                />
-              </div>
-              <div>
-                <Label htmlFor="teamSubHeading">Subheading</Label>
-                <Input
-                  id="teamSubHeading"
-                  value={currentSubHeading}
-                  onChange={(e) => setCurrentSubHeading(e.target.value)}
-                />
-              </div>
-              <div>
-                <Label htmlFor="teamDesc">Description Paragraph</Label>
-                <Textarea
-                  id="teamDesc"
-                  value={currentDescriptionParagraph}
-                  onChange={(e) => setCurrentDescriptionParagraph(e.target.value)}
-                />
+            <PopoverContent className="w-[95vw] sm:w-[600px] lg:w-[750px] p-0 max-h-[80vh] flex flex-col">
+              <div className="flex-1 overflow-y-auto p-4 space-y-6">
+                <div className="space-y-2">
+                  <Label htmlFor="teamMainHeading">Main Heading</Label>
+                  <Input
+                    id="teamMainHeading"
+                    value={currentMainHeading}
+                    onChange={(e) => setCurrentMainHeading(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="teamSubHeading">Subheading</Label>
+                  <Input
+                    id="teamSubHeading"
+                    value={currentSubHeading}
+                    onChange={(e) => setCurrentSubHeading(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="teamDesc">Description Paragraph</Label>
+                  <Textarea
+                    id="teamDesc"
+                    value={currentDescriptionParagraph}
+                    onChange={(e) => setCurrentDescriptionParagraph(e.target.value)}
+                  />
+                </div>
+
+                <div className="border-t pt-4 mt-4">
+                  <h4 className="font-medium leading-none mb-3">Team Members</h4>
+                  {currentTeamMembers.map((member, index) => (
+                    <div key={member.id} className="p-3 pt-4 border rounded-md space-y-3 mb-3 relative">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="absolute top-1 right-1 h-7 w-7 text-destructive hover:bg-destructive/10"
+                        onClick={() => removeMember(member.id)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="space-y-2">
+                          <Label htmlFor={`memberName-${member.id}`}>Name</Label>
+                          <Input
+                            id={`memberName-${member.id}`}
+                            value={member.name}
+                            onChange={(e) => handleMemberChange(index, 'name', e.target.value)}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor={`memberRole-${member.id}`}>Role</Label>
+                          <Input
+                            id={`memberRole-${member.id}`}
+                            value={member.role}
+                            onChange={(e) => handleMemberChange(index, 'role', e.target.value)}
+                          />
+                        </div>
+                      </div>
+                      <div className="w-full flex justify-center">
+                        <div className="max-w-md">
+                          <ImageField
+                            label="Avatar Image"
+                            value={member.avatar}
+                            onChange={(url) => handleMemberChange(index, 'avatar', url)}
+                            metadata={{ blockType: 'team', onePagerId: block.id }}
+                            placeholder="Upload avatar"
+                          />
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor={`memberDesc-${member.id}`}>Description</Label>
+                        <Textarea
+                          id={`memberDesc-${member.id}`}
+                          value={member.description}
+                          onChange={(e) => handleMemberChange(index, 'description', e.target.value)}
+                          className="min-h-[60px]"
+                        />
+                      </div>
+                    </div>
+                  ))}
+                  <Button variant="outline" className="mt-2 w-full" onClick={addMember}>
+                    Add Team Member
+                  </Button>
+                  <div className="pb-4"></div>
+                </div>
               </div>
 
-              <div className="border-t pt-4 mt-4">
-                <h4 className="font-medium leading-none mb-3">Team Members</h4>
-                {currentTeamMembers.map((member, index) => (
-                  <div key={member.id} className="p-3 border rounded-md space-y-3 mb-3 relative bg-slate-50/50">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="absolute top-1 right-1 h-7 w-7 text-destructive hover:bg-destructive/10"
-                      onClick={() => removeMember(member.id)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <Label htmlFor={`memberName-${member.id}`}>Name</Label>
-                        <Input
-                          id={`memberName-${member.id}`}
-                          value={member.name}
-                          onChange={(e) => handleMemberChange(index, 'name', e.target.value)}
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor={`memberRole-${member.id}`}>Role</Label>
-                        <Input
-                          id={`memberRole-${member.id}`}
-                          value={member.role}
-                          onChange={(e) => handleMemberChange(index, 'role', e.target.value)}
-                        />
-                      </div>
-                    </div>
-                    <div>
-                      <ImageField
-                        label="Avatar Image"
-                        value={member.avatar}
-                        onChange={(url) => handleMemberChange(index, 'avatar', url)}
-                        metadata={{ blockType: 'team', onePagerId: block.id }}
-                        placeholder="Upload team member avatar"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor={`memberDesc-${member.id}`}>Description</Label>
-                      <Textarea
-                        id={`memberDesc-${member.id}`}
-                        value={member.description}
-                        onChange={(e) => handleMemberChange(index, 'description', e.target.value)}
-                        className="min-h-[60px]"
-                      />
-                    </div>
-                  </div>
-                ))}
-                <Button variant="outline" className="mt-2 w-full" onClick={addMember}>
-                  Add Team Member
+              <div className="p-4 flex-shrink-0 border-t bg-white">
+                <Button onClick={handleSave} className="w-full">
+                  Save Changes
                 </Button>
               </div>
-
-              <div className="my-4 border-t"></div>
-              <Button onClick={handleSave} className="w-full">
-                Save Changes
-              </Button>
             </PopoverContent>
           </Popover>
         )}

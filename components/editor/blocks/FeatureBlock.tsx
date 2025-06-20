@@ -4,6 +4,7 @@ import React from 'react';
 import { defaultProps, type InlineContentSchema, type StyleSchema } from '@blocknote/core';
 import { createReactBlockSpec, type ReactCustomBlockRenderProps } from '@blocknote/react';
 import { TrendingUp } from 'lucide-react';
+import { withBlockContainer } from '../BlockContainer';
 
 const featureBlockPropsDefinition = {
   ...defaultProps,
@@ -25,10 +26,9 @@ export type FeatureBlockRenderProps = ReactCustomBlockRenderProps<
   StyleSchema
 >;
 
-export const FeatureBlockRenderComponent: React.FC<FeatureBlockRenderProps> = (props) => {
+const FeatureBlockRenderComponent: React.FC<FeatureBlockRenderProps> = (props) => {
   const { contentRef } = props;
   const style = {
-    container: 'mb-4',
     header: 'flex items-center gap-3 pb-2',
     icon: <TrendingUp className="w-5 h-5" />,
     title: 'Feature',
@@ -36,7 +36,7 @@ export const FeatureBlockRenderComponent: React.FC<FeatureBlockRenderProps> = (p
   };
 
   return (
-    <div className={style.container} data-solution-block>
+    <div data-feature-block>
       <div className={style.header}>
         {style.icon}
         <span className="font-semibold text-lg">{style.title}</span>
@@ -56,5 +56,5 @@ export const FeatureBlockRenderComponent: React.FC<FeatureBlockRenderProps> = (p
 };
 
 export const featureBlockSpec = createReactBlockSpec(featureBlockConfig, {
-  render: FeatureBlockRenderComponent,
+  render: withBlockContainer(FeatureBlockRenderComponent, 'compact'),
 });

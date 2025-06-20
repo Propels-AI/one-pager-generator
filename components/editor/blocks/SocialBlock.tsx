@@ -1,16 +1,16 @@
 import { createReactBlockSpec } from '@blocknote/react';
 import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Twitter, Linkedin, Github, Globe, Link as LucideLink } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 
 const platformOptions = [
-  { value: "twitter", label: "Twitter/X", icon: Twitter, defaultDisplayText: "Twitter" },
-  { value: "linkedin", label: "LinkedIn", icon: Linkedin, defaultDisplayText: "LinkedIn" },
-  { value: "github", label: "GitHub", icon: Github, defaultDisplayText: "GitHub" },
-  { value: "website", label: "Website", icon: Globe, defaultDisplayText: "Website" },
-  { value: "other", label: "Other", icon: LucideLink, defaultDisplayText: "Link" },
+  { value: 'twitter', label: 'Twitter/X', icon: Twitter, defaultDisplayText: 'Twitter' },
+  { value: 'linkedin', label: 'LinkedIn', icon: Linkedin, defaultDisplayText: 'LinkedIn' },
+  { value: 'github', label: 'GitHub', icon: Github, defaultDisplayText: 'GitHub' },
+  { value: 'website', label: 'Website', icon: Globe, defaultDisplayText: 'Website' },
+  { value: 'other', label: 'Other', icon: LucideLink, defaultDisplayText: 'Link' },
 ];
 
 export const SocialBlockSpec = createReactBlockSpec(
@@ -57,8 +57,6 @@ export const SocialBlockSpec = createReactBlockSpec(
         }
       }, [block.props.startInEditMode, editor, block]);
 
-
-
       const currentPlatform = platformOptions.find((p) => p.value === block.props.platform) || platformOptions[0];
 
       const handlePlatformChange = (newPlatformValue: string) => {
@@ -87,7 +85,9 @@ export const SocialBlockSpec = createReactBlockSpec(
           role="button"
           tabIndex={0}
           onClick={() => isEditable && setIsEditingPopoverOpen(true)}
-          onKeyDown={(e) => { if (isEditable && (e.key === 'Enter' || e.key === ' ')) setIsEditingPopoverOpen(true); }}
+          onKeyDown={(e) => {
+            if (isEditable && (e.key === 'Enter' || e.key === ' ')) setIsEditingPopoverOpen(true);
+          }}
         >
           <currentPlatform.icon className={iconClassName} />
           <span>{block.props.displayText || currentPlatform.defaultDisplayText}</span>
@@ -95,12 +95,7 @@ export const SocialBlockSpec = createReactBlockSpec(
       );
 
       const renderFinalLink = (className: string, iconClassName: string) => (
-        <a
-          href={block.props.url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className={className}
-        >
+        <a href={block.props.url} target="_blank" rel="noopener noreferrer" className={className}>
           <currentPlatform.icon className={iconClassName} />
           <span>{block.props.displayText || currentPlatform.defaultDisplayText}</span>
         </a>
@@ -111,8 +106,8 @@ export const SocialBlockSpec = createReactBlockSpec(
           <Popover open={isEditingPopoverOpen} onOpenChange={setIsEditingPopoverOpen}>
             <PopoverTrigger asChild>
               {renderLink(
-                "inline-flex items-center gap-1.5 text-base hover:underline cursor-pointer p-1 border border-transparent hover:border-gray-300 rounded",
-                "h-5 w-5 flex-shrink-0"
+                'inline-flex items-center gap-1.5 text-base hover:underline cursor-pointer p-1 border border-transparent hover:border-gray-300 rounded',
+                'h-5 w-5 flex-shrink-0'
               )}
             </PopoverTrigger>
             <PopoverContent
@@ -156,7 +151,9 @@ export const SocialBlockSpec = createReactBlockSpec(
                   placeholder="Link display text"
                   value={block.props.displayText}
                   className="mt-1"
-                  onChange={(e) => editor.updateBlock(block, { props: { ...block.props, displayText: e.target.value } })}
+                  onChange={(e) =>
+                    editor.updateBlock(block, { props: { ...block.props, displayText: e.target.value } })
+                  }
                 />
               </div>
 
@@ -177,12 +174,12 @@ export const SocialBlockSpec = createReactBlockSpec(
       }
 
       // Non-editable / final display mode
-      const className = "inline-flex items-center gap-1.5 text-base hover:underline";
-      const iconClassName = "h-5 w-5 flex-shrink-0";
+      const className = 'inline-flex items-center gap-1.5 text-base hover:underline';
+      const iconClassName = 'h-5 w-5 flex-shrink-0';
       if (block.props.url) {
         return renderFinalLink(className, iconClassName);
       }
       return renderLink(className, iconClassName);
-    }
+    },
   }
 );

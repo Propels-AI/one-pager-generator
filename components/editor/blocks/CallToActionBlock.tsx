@@ -9,6 +9,7 @@ import { Button as ShadButton } from '@/components/ui/button'; // Aliasing to av
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { BlockContainer } from '../BlockContainer';
 
 // CTASection Component (from user request)
 interface CTASectionProps {
@@ -37,7 +38,7 @@ function CTASection({
   const SecondaryButtonComponent = secondaryButtonHref ? 'a' : 'button';
 
   return (
-    <section className="w-full py-8">
+    <BlockContainer>
       <div className="w-full px-4 text-center">
         {' '}
         {/* Changed for full width content */}
@@ -56,7 +57,7 @@ function CTASection({
           </ShadButton>
         </div>
       </div>
-    </section>
+    </BlockContainer>
   );
 }
 

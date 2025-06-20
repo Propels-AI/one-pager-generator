@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { BlockContainer } from '../BlockContainer';
 
 interface FaqItemDefinition {
   id: string;
@@ -166,29 +167,35 @@ export const FaqBlockSpec = createReactBlockSpec(faqBlockConfig, {
     const currentBlockBackgroundColor = block.props.backgroundColor || faqPropsDefinition.backgroundColor.default;
 
     return (
-      <div
-        className="relative group w-full py-8"
-        style={{
-          backgroundColor: currentBlockBackgroundColor === 'transparent' ? undefined : currentBlockBackgroundColor,
-        }}
-      >
-        <h2 className="mb-4 text-4xl font-semibold md:mb-8 md:text-5xl px-4" style={{ color: effectiveHeadingColor }}>
-          {block.props.heading}
-        </h2>
-        {(JSON.parse(block.props.items) as FaqItemDefinition[]).length > 0 ? (
-          <Accordion type="single" collapsible className="w-full px-4">
-            {(JSON.parse(block.props.items) as FaqItemDefinition[]).map((item) => (
-              <AccordionItem key={item.id} value={item.id}>
-                <AccordionTrigger className="text-left font-semibold hover:no-underline">
-                  {item.question}
-                </AccordionTrigger>
-                <AccordionContent className="text-muted-foreground">{item.answer}</AccordionContent>
-              </AccordionItem>
-            ))}
-          </Accordion>
-        ) : (
-          <p className="text-muted-foreground px-4">No FAQ items yet. Click edit to add some!</p>
-        )}
+      <div className="relative group w-full">
+        <div
+          style={{
+            backgroundColor: currentBlockBackgroundColor === 'transparent' ? undefined : currentBlockBackgroundColor,
+          }}
+        >
+          <BlockContainer blockType="faq">
+            <h2
+              className="mb-4 text-4xl font-semibold md:mb-8 md:text-5xl px-4"
+              style={{ color: effectiveHeadingColor }}
+            >
+              {block.props.heading}
+            </h2>
+            {(JSON.parse(block.props.items) as FaqItemDefinition[]).length > 0 ? (
+              <Accordion type="single" collapsible className="w-full px-4">
+                {(JSON.parse(block.props.items) as FaqItemDefinition[]).map((item) => (
+                  <AccordionItem key={item.id} value={item.id}>
+                    <AccordionTrigger className="text-left font-semibold hover:no-underline">
+                      {item.question}
+                    </AccordionTrigger>
+                    <AccordionContent className="text-muted-foreground">{item.answer}</AccordionContent>
+                  </AccordionItem>
+                ))}
+              </Accordion>
+            ) : (
+              <p className="text-muted-foreground px-4">No FAQ items yet. Click edit to add some!</p>
+            )}
+          </BlockContainer>
+        </div>
 
         {editor.isEditable && (
           <Popover

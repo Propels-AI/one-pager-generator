@@ -4,6 +4,7 @@ import React from 'react';
 import { defaultProps, type InlineContentSchema, type StyleSchema } from '@blocknote/core';
 import { createReactBlockSpec, type ReactCustomBlockRenderProps } from '@blocknote/react';
 import { Lightbulb } from 'lucide-react';
+import { BlockContainer } from '../BlockContainer';
 
 const solutionBlockPropsDefinition = {
   ...defaultProps,
@@ -29,7 +30,6 @@ export type SolutionBlockRenderProps = ReactCustomBlockRenderProps<
 export const SolutionBlockRenderComponent: React.FC<SolutionBlockRenderProps> = (props) => {
   const { contentRef } = props;
   const style = {
-    container: 'mb-4',
     header: 'flex items-center gap-3 pb-2',
     icon: <Lightbulb className="w-5 h-5" />,
     title: 'Solution',
@@ -37,22 +37,24 @@ export const SolutionBlockRenderComponent: React.FC<SolutionBlockRenderProps> = 
   };
 
   return (
-    <div className={style.container} data-solution-block>
-      <div className={style.header}>
-        {style.icon}
-        <span className="font-semibold text-lg">{style.title}</span>
+    <BlockContainer blockType="solution" spacing="compact">
+      <div data-solution-block>
+        <div className={style.header}>
+          {style.icon}
+          <span className="font-semibold text-lg">{style.title}</span>
+        </div>
+        <div className={style.contentContainer}>
+          <div
+            ref={contentRef}
+            className="bn-inline-content"
+            style={{
+              fontSize: '1rem',
+              lineHeight: '1.6',
+            }}
+          />
+        </div>
       </div>
-      <div className={style.contentContainer}>
-        <div
-          ref={contentRef}
-          className="bn-inline-content"
-          style={{
-            fontSize: '1rem',
-            lineHeight: '1.6',
-          }}
-        />
-      </div>
-    </div>
+    </BlockContainer>
   );
 };
 

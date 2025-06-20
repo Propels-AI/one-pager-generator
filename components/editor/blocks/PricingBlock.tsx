@@ -4,6 +4,7 @@ import React from 'react';
 import { defaultProps, type InlineContentSchema, type StyleSchema } from '@blocknote/core';
 import { createReactBlockSpec, type ReactCustomBlockRenderProps } from '@blocknote/react';
 import { MdPriceCheck } from 'react-icons/md';
+import { BlockContainer } from '../BlockContainer';
 
 const pricingBlockPropsDefinition = {
   ...defaultProps,
@@ -31,7 +32,6 @@ export const PricingBlockRenderComponent: React.FC<PricingBlockRenderProps> = (p
     border: '1px solid #e0e0e0',
     boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
     padding: '24px',
-    margin: '16px 0',
     borderRadius: '8px',
     backgroundColor: '#ffffff',
     position: 'relative',
@@ -61,21 +61,23 @@ export const PricingBlockRenderComponent: React.FC<PricingBlockRenderProps> = (p
   };
 
   return (
-    <div data-pricing-block style={wrapperStyle}>
-      <div style={labelStyle}>Pricing Section</div>
-      <h4 style={titleStyle}>
-        <MdPriceCheck style={{ marginRight: '10px', fontSize: '1.3em' }} /> {props.block.props.name || 'Pricing Tier / Table'}
-      </h4>
-      <div 
-        ref={props.contentRef} 
-        className="bn-inline-content" 
-        style={{ 
-          fontSize: '1rem', 
-          lineHeight: '1.6' 
-        }}
-      />
-      {/* Placeholder for detailed pricing structure */}
-    </div>
+    <BlockContainer blockType="pricing" spacing="compact">
+      <div data-pricing-block style={wrapperStyle}>
+        <div style={labelStyle}>Pricing Section</div>
+        <h4 style={titleStyle}>
+          <MdPriceCheck style={{ marginRight: '10px', fontSize: '1.3em' }} />{' '}
+          {props.block.props.name || 'Pricing Tier / Table'}
+        </h4>
+        <div
+          ref={props.contentRef}
+          className="bn-inline-content"
+          style={{
+            fontSize: '1rem',
+            lineHeight: '1.6',
+          }}
+        />
+      </div>
+    </BlockContainer>
   );
 };
 

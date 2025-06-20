@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Trash2, Pencil, PlusCircle } from 'lucide-react';
+import { BlockContainer } from '../BlockContainer';
 
 // Interface for individual timeline events
 interface TimelineEvent {
@@ -121,48 +122,52 @@ export const TimelineBlockSpec = createReactBlockSpec(
       const displayedEvents: TimelineEvent[] = JSON.parse(block.props.events);
 
       return (
-        <div className="relative group w-full max-w-6xl mx-auto p-8">
-          <div className="text-center mb-16">
-            <h1 className="text-5xl font-bold text-black mb-2">{block.props.mainHeading}</h1>
-          </div>
+        <div className="relative group w-full">
+          <BlockContainer blockType="timeline">
+            <div className="max-w-6xl mx-auto px-4">
+              <div className="text-center mb-16">
+                <h1 className="text-5xl font-bold text-black mb-2">{block.props.mainHeading}</h1>
+              </div>
 
-          {/* Desktop Timeline */}
-          <div className="hidden md:block">
-            <div className="relative">
-              <div className="absolute top-1.5 left-0 right-0 h-0.5 bg-black"></div>
-              <div className="grid grid-cols-4 gap-8">
-                {displayedEvents.map((item, index) => (
-                  <div key={item.id} className="relative">
-                    <div className="w-3 h-3 bg-white border-2 border-black rounded-full relative z-10"></div>
-                    <div className="mt-6 space-y-2">
-                      <div className="text-sm text-gray-600">{item.date}</div>
-                      <h3 className="text-lg font-bold text-black">{item.phase}</h3>
-                      <p className="text-sm text-gray-700 leading-relaxed">{item.description}</p>
-                    </div>
+              {/* Desktop Timeline */}
+              <div className="hidden md:block">
+                <div className="relative">
+                  <div className="absolute top-1.5 left-0 right-0 h-0.5 bg-black"></div>
+                  <div className="grid grid-cols-4 gap-8">
+                    {displayedEvents.map((item, index) => (
+                      <div key={item.id} className="relative">
+                        <div className="w-3 h-3 bg-white border-2 border-black rounded-full relative z-10"></div>
+                        <div className="mt-6 space-y-2">
+                          <div className="text-sm text-gray-600">{item.date}</div>
+                          <h3 className="text-lg font-bold text-black">{item.phase}</h3>
+                          <p className="text-sm text-gray-700 leading-relaxed">{item.description}</p>
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                ))}
+                </div>
+              </div>
+
+              {/* Mobile Timeline */}
+              <div className="md:hidden">
+                <div className="relative pl-8">
+                  <div className="absolute left-1.5 top-0 bottom-0 w-0.5 bg-black"></div>
+                  <div className="space-y-12">
+                    {displayedEvents.map((item, index) => (
+                      <div key={item.id} className="relative">
+                        <div className="absolute -left-7 w-3 h-3 bg-white border-2 border-black rounded-full"></div>
+                        <div className="space-y-2">
+                          <div className="text-sm text-gray-600">{item.date}</div>
+                          <h3 className="text-lg font-bold text-black">{item.phase}</h3>
+                          <p className="text-sm text-gray-700 leading-relaxed">{item.description}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </div>
             </div>
-          </div>
-
-          {/* Mobile Timeline */}
-          <div className="md:hidden">
-            <div className="relative pl-8">
-              <div className="absolute left-1.5 top-0 bottom-0 w-0.5 bg-black"></div>
-              <div className="space-y-12">
-                {displayedEvents.map((item, index) => (
-                  <div key={item.id} className="relative">
-                    <div className="absolute -left-7 w-3 h-3 bg-white border-2 border-black rounded-full"></div>
-                    <div className="space-y-2">
-                      <div className="text-sm text-gray-600">{item.date}</div>
-                      <h3 className="text-lg font-bold text-black">{item.phase}</h3>
-                      <p className="text-sm text-gray-700 leading-relaxed">{item.description}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
+          </BlockContainer>
 
           {/* Edit Popover Trigger */}
           <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">

@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import ImageField from '@/components/ui/ImageField';
 import { EditBlockPopover, FormField, FormSection, ItemCard } from '../EditBlockPopover';
+import { BlockContainer } from '../BlockContainer';
 
 // Interfaces
 interface CarouselImage {
@@ -70,7 +71,7 @@ const ImageCarouselDisplay: React.FC<ImageCarouselDisplayProps> = ({ images, aut
   const containerSizeClass = sizeClasses[size as keyof typeof sizeClasses] || sizeClasses.large;
 
   return (
-    <section className="py-4 w-full">
+    <BlockContainer>
       <div className="container mx-auto px-4">
         <div className={`${containerSizeClass} mx-auto`}>
           <div className="relative">
@@ -125,7 +126,7 @@ const ImageCarouselDisplay: React.FC<ImageCarouselDisplayProps> = ({ images, aut
           </div>
         </div>
       </div>
-    </section>
+    </BlockContainer>
   );
 };
 

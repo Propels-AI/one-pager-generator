@@ -4,6 +4,7 @@ import React from 'react';
 import { defaultProps, type InlineContentSchema, type StyleSchema } from '@blocknote/core';
 import { createReactBlockSpec, type ReactCustomBlockRenderProps } from '@blocknote/react';
 import { AlertTriangle } from 'lucide-react';
+import { BlockContainer } from '../BlockContainer';
 
 const problemBlockPropsDefinition = {
   ...defaultProps,
@@ -30,7 +31,7 @@ export const ProblemBlockRenderComponent: React.FC<ProblemBlockRenderProps> = (p
   const { contentRef } = props;
 
   const style = {
-    container: 'border-t border-border shadow-sm my-4 rounded-md',
+    container: 'border-t border-border shadow-sm rounded-md',
     header: 'border-l pl-4 py-3 flex items-center gap-3',
     icon: <AlertTriangle className="w-5 h-5" />,
     title: 'Problem',
@@ -38,22 +39,24 @@ export const ProblemBlockRenderComponent: React.FC<ProblemBlockRenderProps> = (p
   };
 
   return (
-    <div className={style.container} data-problem-block>
-      <div className={style.header}>
-        {style.icon}
-        <span className="font-semibold text-lg">{style.title}</span>
+    <BlockContainer blockType="problem" spacing="compact">
+      <div className={style.container} data-problem-block>
+        <div className={style.header}>
+          {style.icon}
+          <span className="font-semibold text-lg">{style.title}</span>
+        </div>
+        <div className={style.contentContainer}>
+          <div
+            ref={contentRef}
+            className="bn-inline-content"
+            style={{
+              fontSize: '1rem',
+              lineHeight: '1.6',
+            }}
+          />
+        </div>
       </div>
-      <div className={style.contentContainer}>
-        <div
-          ref={contentRef}
-          className="bn-inline-content"
-          style={{
-            fontSize: '1rem',
-            lineHeight: '1.6',
-          }}
-        />
-      </div>
-    </div>
+    </BlockContainer>
   );
 };
 

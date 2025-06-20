@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import ImageField from '@/components/ui/ImageField';
 import { EditBlockPopover, FormField, FormSection, ItemCard } from '../EditBlockPopover';
+import { BlockContainer } from '../BlockContainer';
 
 // Interfaces
 interface TeamMember {
@@ -35,7 +36,7 @@ const TeamSectionDisplay: React.FC<TeamSectionDisplayProps> = ({
   teamMembers,
 }) => {
   return (
-    <section className="py-8 w-full">
+    <BlockContainer>
       <div className="container flex flex-col items-start text-left px-4 mx-auto">
         <p className="font-semibold text-primary">{mainHeading}</p>
         <h2 className="my-4 text-3xl font-bold md:text-4xl lg:text-5xl text-pretty">{subHeading}</h2>
@@ -54,7 +55,7 @@ const TeamSectionDisplay: React.FC<TeamSectionDisplayProps> = ({
           </div>
         ))}
       </div>
-    </section>
+    </BlockContainer>
   );
 };
 

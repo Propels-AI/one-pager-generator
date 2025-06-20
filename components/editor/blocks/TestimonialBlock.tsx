@@ -11,6 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import ImageField from '@/components/ui/ImageField';
 import { EditBlockPopover, FormField, FormSection, ItemCard } from '../EditBlockPopover';
+import { BlockContainer } from '../BlockContainer';
 
 interface SubTestimonialItem {
   id: string;
@@ -58,7 +59,7 @@ export const testimonialBlockSpec = createReactBlockSpec(testimonialBlockConfig,
     }
 
     const staticContent = (
-      <section className="py-6">
+      <BlockContainer>
         <div className="container mx-auto">
           <div className="flex flex-col gap-6">
             <div className="grid grid-cols-1 items-stretch gap-x-0 gap-y-4 lg:grid-cols-3 lg:gap-4">
@@ -105,7 +106,7 @@ export const testimonialBlockSpec = createReactBlockSpec(testimonialBlockConfig,
             </div>
           </div>
         </div>
-      </section>
+      </BlockContainer>
     );
 
     if (!editor.isEditable) {

@@ -1,4 +1,4 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import {
@@ -9,6 +9,10 @@ import {
   type CreateOnePagerInput,
   type UpdateOnePagerInput,
   type OnePagerFromSchema,
+  createPersonalizedLink,
+  createMultiplePersonalizedLinks,
+  fetchSharedLinksForOnePager,
+  deleteSharedLink,
 } from '@/lib/services/entityService';
 import { imageMigrationService } from '@/lib/services/imageMigrationService';
 
@@ -288,6 +292,105 @@ export function useSaveAndPublish() {
       console.error('Publish error:', error);
       toast.error('Error Publishing', {
         description: error.message || 'An unexpected error occurred while publishing.',
+      });
+    },
+  });
+}
+
+export function useCreatePersonalizedLinks() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      baseOnePagerId,
+      ownerUserId,
+      recipientNames,
+    }: {
+      baseOnePagerId: string;
+      ownerUserId: string;
+      recipientNames: string[];
+    }) => {
+      const result = await createMultiplePersonalizedLinks(baseOnePagerId, ownerUserId, recipientNames);
+      return result;
+    },
+    onSuccess: (data, variables) => {
+      const { successes, failures } = data;
+      const totalCount = variables.recipientNames.length;
+
+      if (successes.length === totalCount) {
+        // All succeeded
+        if (totalCount === 1) {
+          toast.success(`Personal link created for ${successes[0].name}!`, {
+            description: 'The personalized link has been generated successfully.',
+          });
+        } else {
+          toast.success(`${totalCount} personal links created!`, {
+            description: `Links generated for: ${successes.map((s) => s.name).join(', ')}`,
+          });
+        }
+      } else if (successes.length > 0) {
+        // Partial success
+        toast.success(`${successes.length} of ${totalCount} links created`, {
+          description: `Success: ${successes.map((s) => s.name).join(', ')}`,
+        });
+
+        if (failures.length > 0) {
+          toast.error(`${failures.length} links failed`, {
+            description: failures.map((f) => `${f.name}: ${f.error}`).join('; '),
+          });
+        }
+      } else {
+        // All failed
+        throw new Error(failures.map((f) => `${f.name}: ${f.error}`).join('; '));
+      }
+
+      // Invalidate shared links query for this one-pager
+      queryClient.invalidateQueries({
+        queryKey: ['sharedLinks', variables.baseOnePagerId],
+      });
+    },
+    onError: (error: Error) => {
+      toast.error('Failed to create personalized links', {
+        description: error.message,
+      });
+    },
+  });
+}
+
+export function useSharedLinksForOnePager(baseOnePagerId: string) {
+  return useQuery({
+    queryKey: ['sharedLinks', baseOnePagerId],
+    queryFn: () => fetchSharedLinksForOnePager(baseOnePagerId),
+    enabled: !!baseOnePagerId,
+  });
+}
+
+export function useDeleteSharedLink() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ sharedLinkPK, baseOnePagerId }: { sharedLinkPK: string; baseOnePagerId: string }) => {
+      const result = await deleteSharedLink(sharedLinkPK);
+
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to delete shared link');
+      }
+
+      return result;
+    },
+    onSuccess: (data, variables) => {
+      toast.success('Personalized link deleted', {
+        description: 'The link has been removed successfully.',
+      });
+
+      // Invalidate shared links query for this one-pager
+      queryClient.invalidateQueries({
+        queryKey: ['sharedLinks', variables.baseOnePagerId],
+      });
+    },
+    onError: (error: Error) => {
+      toast.error('Failed to delete link', {
+        description: error.message,
       });
     },
   });

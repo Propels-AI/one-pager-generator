@@ -1,6 +1,7 @@
 import { generateClient } from 'aws-amplify/data';
 import type { Schema } from '@/amplify/data/resource';
 import { nanoid } from 'nanoid';
+import { generatePersonalizedSlug } from '../utils/slugUtils';
 
 const client = generateClient<Schema>();
 
@@ -382,5 +383,121 @@ export async function updateOnePager(input: UpdateOnePagerInput): Promise<OnePag
   } catch (error) {
     console.error('Error updating OnePager:', error);
     throw error;
+  }
+}
+
+export async function createPersonalizedLink(
+  baseOnePagerId: string,
+  ownerUserId: string,
+  recipientName: string
+): Promise<{ data: any; error?: string; slug?: string }> {
+  try {
+    const personalizedSlug = generatePersonalizedSlug(recipientName);
+    const currentDateTime = new Date().toISOString();
+
+    const { data: sharedLink, errors } = await client.models.Entity.create({
+      PK: `SLINK#${personalizedSlug}`,
+      SK: 'METADATA',
+      entityType: 'SharedLink',
+      baseOnePagerId,
+      ownerUserId,
+      recipientNameForDisplay: recipientName,
+      gsi2PK: baseOnePagerId,
+      gsi2SK: currentDateTime,
+    } as any);
+
+    if (errors) {
+      console.error('Failed to create personalized link:', errors);
+      return {
+        data: null,
+        error: errors.map((e: any) => e.message).join(', '),
+      };
+    }
+
+    return {
+      data: sharedLink,
+      slug: personalizedSlug,
+    };
+  } catch (error: any) {
+    console.error('Exception creating personalized link:', error);
+    return {
+      data: null,
+      error: error.message || 'Failed to create personalized link',
+    };
+  }
+}
+
+export async function fetchSharedLinksForOnePager(baseOnePagerId: string): Promise<any[]> {
+  try {
+    const { data: sharedLinks, errors } = await client.models.Entity.list({
+      filter: {
+        gsi2PK: { eq: baseOnePagerId },
+        entityType: { eq: 'SharedLink' },
+      },
+    });
+
+    if (errors) {
+      console.error('Failed to fetch shared links:', errors);
+      return [];
+    }
+
+    return sharedLinks.sort((a, b) => {
+      if (a.createdAt && b.createdAt) {
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      }
+      return 0;
+    });
+  } catch (error) {
+    console.error('Exception fetching shared links:', error);
+    return [];
+  }
+}
+
+export async function createMultiplePersonalizedLinks(
+  baseOnePagerId: string,
+  ownerUserId: string,
+  recipientNames: string[]
+): Promise<{
+  successes: Array<{ name: string; slug: string }>;
+  failures: Array<{ name: string; error: string }>;
+}> {
+  const successes: Array<{ name: string; slug: string }> = [];
+  const failures: Array<{ name: string; error: string }> = [];
+
+  for (const name of recipientNames) {
+    const result = await createPersonalizedLink(baseOnePagerId, ownerUserId, name);
+
+    if (result.error) {
+      failures.push({ name, error: result.error });
+    } else {
+      successes.push({ name, slug: result.slug! });
+    }
+  }
+
+  return { successes, failures };
+}
+
+export async function deleteSharedLink(sharedLinkPK: string): Promise<{ success: boolean; error?: string }> {
+  try {
+    const { errors } = await client.models.Entity.delete({
+      PK: sharedLinkPK,
+      SK: 'METADATA',
+    });
+
+    if (errors) {
+      console.error('Failed to delete shared link:', errors);
+      return {
+        success: false,
+        error: errors.map((e: any) => e.message).join(', '),
+      };
+    }
+
+    return { success: true };
+  } catch (error: any) {
+    console.error('Exception deleting shared link:', error);
+    return {
+      success: false,
+      error: error.message || 'Failed to delete shared link',
+    };
   }
 }

@@ -3,17 +3,33 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { useAuth, useAuthWall } from '@/lib/hooks/useAuthWall';
 import { useRouter, useParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { fetchOnePagerById } from '@/lib/services/entityService';
-import { useSaveDraft, useSaveAndPublish } from '@/lib/hooks/useOnePagerMutations';
-import { Loader2, Eye, Edit3, Edit, Save, Globe } from 'lucide-react';
+import {
+  useSaveDraft,
+  useSaveAndPublish,
+  useDeleteOnePager,
+  useUpdateOnePager,
+} from '@/lib/hooks/useOnePagerMutations';
+import { Loader2, Eye, Edit3, Edit, Save, Globe, Trash2, Share2 } from 'lucide-react';
 import { AuthSignInDialog } from '@/components/ui/AuthSignInDialog';
 import dynamic from 'next/dynamic';
 import type { CustomSchemaEditor as BlockNoteEditorType, PartialBlock } from '@/components/editor/BlockNoteEditor';
 import { customSchema } from '@/components/editor/BlockNoteEditor';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { ShareModal } from '@/components/one-pager/ShareModal';
 
 const BlockNoteEditor = dynamic(() => import('@/components/editor/BlockNoteEditor'), {
   ssr: false,
@@ -61,6 +77,8 @@ export default function EditorPage() {
   // Action-specific mutations - DECLARE ALL HOOKS BEFORE ANY CONDITIONAL RETURNS
   const saveDraftMutation = useSaveDraft();
   const saveAndPublishMutation = useSaveAndPublish();
+  const deleteOnePagerMutation = useDeleteOnePager();
+  const updateOnePagerMutation = useUpdateOnePager();
 
   const { data: existingOnePager, isLoading: isLoadingOnePager } = useQuery({
     queryKey: ['onePager', documentId || 'new'],
@@ -87,6 +105,8 @@ export default function EditorPage() {
   const [isAuthDialogOpen, setIsAuthDialogOpen] = useState(false);
   const [saveIntentAfterAuth, setSaveIntentAfterAuth] = useState<'draft' | 'publish' | null>(null);
   const [viewMode, setViewMode] = useState<'editor' | 'preview'>('editor');
+  const [shareModalOpen, setShareModalOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 
   useEffect(() => {
     if (existingOnePager) {
@@ -138,6 +158,72 @@ export default function EditorPage() {
       isNewDocument,
     });
   }, [editorInstance, user, internalTitle, isNewDocument, onePagerPKToFetch, saveAndPublishMutation]);
+
+  const handleUnpublish = useCallback(() => {
+    if (!editorInstance || !user || !existingOnePager?.PK || !existingOnePager?.contentBlocks) {
+      return alert('Cannot unpublish: missing required data.');
+    }
+
+    const contentBlocks = JSON.parse(existingOnePager.contentBlocks);
+    updateOnePagerMutation.mutate(
+      {
+        PK: existingOnePager.PK,
+        internalTitle: internalTitle || 'Untitled Page',
+        status: 'DRAFT',
+        contentBlocks,
+      },
+      {
+        onSuccess: () => {
+          router.push('/dashboard'); // Redirect to dashboard after unpublishing
+        },
+      }
+    );
+  }, [editorInstance, user, existingOnePager, internalTitle, updateOnePagerMutation, router]);
+
+  const handleDelete = useCallback(() => {
+    if (!existingOnePager?.PK) {
+      return alert('Cannot delete: missing page data.');
+    }
+
+    setIsDeleteDialogOpen(true);
+  }, [existingOnePager]);
+
+  const confirmDelete = useCallback(() => {
+    if (existingOnePager?.PK) {
+      deleteOnePagerMutation.mutate(existingOnePager.PK, {
+        onSuccess: () => {
+          router.push('/dashboard'); // Redirect to dashboard after deleting
+        },
+      });
+    }
+    setIsDeleteDialogOpen(false);
+  }, [existingOnePager, deleteOnePagerMutation, router]);
+
+  const handleUnpublishFromDialog = useCallback(() => {
+    if (!editorInstance || !user || !existingOnePager?.PK || !existingOnePager?.contentBlocks) {
+      return alert('Cannot unpublish: missing required data.');
+    }
+
+    const contentBlocks = JSON.parse(existingOnePager.contentBlocks);
+    updateOnePagerMutation.mutate(
+      {
+        PK: existingOnePager.PK,
+        internalTitle: internalTitle || 'Untitled Page',
+        status: 'DRAFT',
+        contentBlocks,
+      },
+      {
+        onSuccess: () => {
+          router.push('/dashboard'); // Redirect to dashboard after unpublishing
+        },
+      }
+    );
+    setIsDeleteDialogOpen(false);
+  }, [editorInstance, user, existingOnePager, internalTitle, updateOnePagerMutation, router]);
+
+  const handleOpenShareModal = useCallback(() => {
+    setShareModalOpen(true);
+  }, []);
 
   const handleSaveDraft = () => {
     if (!editorInstance) {
@@ -374,22 +460,71 @@ export default function EditorPage() {
                 </>
               )}
             </Button>
-            <Button
-              onClick={handleSaveAndPublish}
-              disabled={saveAndPublishMutation.isPending || !editorInstance}
-              variant="default"
-              className="gap-2"
-            >
-              {saveAndPublishMutation.isPending ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" /> Publishing...
-                </>
-              ) : (
-                <>
-                  <Globe className="h-4 w-4" /> Publish
-                </>
-              )}
-            </Button>
+
+            {/* Manage Shares Button - only for published pages */}
+            {existingOnePager?.status === 'PUBLISHED' && (
+              <Button onClick={handleOpenShareModal} variant="outline" className="gap-2">
+                <Share2 className="h-4 w-4" />
+                Manage Shares
+              </Button>
+            )}
+
+            {/* Dynamic Publish/Unpublish Button */}
+            {existingOnePager?.status === 'PUBLISHED' ? (
+              <Button
+                onClick={handleUnpublish}
+                disabled={updateOnePagerMutation.isPending || !editorInstance}
+                variant="outline"
+                className="gap-2"
+              >
+                {updateOnePagerMutation.isPending ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" /> Unpublishing...
+                  </>
+                ) : (
+                  <>
+                    <Globe className="h-4 w-4" /> Unpublish
+                  </>
+                )}
+              </Button>
+            ) : (
+              <Button
+                onClick={handleSaveAndPublish}
+                disabled={saveAndPublishMutation.isPending || !editorInstance}
+                variant="default"
+                className="gap-2"
+              >
+                {saveAndPublishMutation.isPending ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" /> Publishing...
+                  </>
+                ) : (
+                  <>
+                    <Globe className="h-4 w-4" /> Publish
+                  </>
+                )}
+              </Button>
+            )}
+
+            {/* Delete Button - only for authenticated users with existing documents */}
+            {user && !isNewDocument && existingOnePager && (
+              <Button
+                onClick={handleDelete}
+                disabled={deleteOnePagerMutation.isPending}
+                variant="outline"
+                className="gap-2 text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
+              >
+                {deleteOnePagerMutation.isPending ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" /> Deleting...
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="h-4 w-4" /> Delete
+                  </>
+                )}
+              </Button>
+            )}
           </div>
         </div>
       </header>
@@ -442,6 +577,62 @@ export default function EditorPage() {
           </DialogContent>
         </Dialog>
       )}
+
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent className="max-w-lg">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete or Unpublish Page?</AlertDialogTitle>
+            <AlertDialogDescription className="space-y-4">
+              Deleting this page will permanently delete the page and all shared links. Your recipients will no longer
+              have access to the page. <strong>This action cannot be undone.</strong>
+              <br />
+              <br />
+              Alternatively, you can unpublish the page to temporarily disable all shared links. They will be
+              reactivated once you publish the page again.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex-col sm:flex-row gap-2">
+            <AlertDialogCancel onClick={() => setIsDeleteDialogOpen(false)} className="order-3 sm:order-1">
+              Cancel
+            </AlertDialogCancel>
+            <Button
+              variant="default"
+              onClick={handleUnpublishFromDialog}
+              className="order-2"
+              disabled={updateOnePagerMutation.isPending}
+            >
+              {updateOnePagerMutation.isPending ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Unpublishing...
+                </>
+              ) : (
+                'Unpublish'
+              )}
+            </Button>
+            <AlertDialogAction
+              onClick={confirmDelete}
+              className="order-1 sm:order-3 bg-red-600 hover:bg-red-700"
+              disabled={deleteOnePagerMutation.isPending}
+            >
+              {deleteOnePagerMutation.isPending ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                'Delete Permanently'
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <ShareModal
+        onePager={existingOnePager || null}
+        isOpen={shareModalOpen}
+        onClose={() => setShareModalOpen(false)}
+      />
     </div>
   );
 }

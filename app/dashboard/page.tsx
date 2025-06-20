@@ -11,7 +11,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Copy, ExternalLink, Edit, Plus, MoreVertical, Trash2, Share2, Loader2 } from 'lucide-react';
+import { Edit, Plus, Trash2, Share2, Loader2, ExternalLink, MoreVertical } from 'lucide-react';
+import { ShareModal } from '@/components/one-pager/ShareModal';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -22,7 +23,7 @@ import { useAuth } from '@/lib/hooks/useAuthWall';
 import { ProtectPage } from '@/components/auth/AuthComponents';
 import { useQuery } from '@tanstack/react-query';
 import { fetchUserOnePagers, type OnePagerFromSchema as OnePagerEntity } from '@/lib/services/entityService';
-import { useDeleteOnePager, usePublishDraft } from '@/lib/hooks/useOnePagerMutations';
+import { useDeleteOnePager, usePublishDraft, useUpdateOnePager } from '@/lib/hooks/useOnePagerMutations';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -36,7 +37,9 @@ function DashboardContent() {
 
   const [activeTab, setActiveTab] = useState('published');
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  const [onePagerToDelete, setOnePagerToDelete] = useState<string | null>(null);
+  const [onePagerToDelete, setOnePagerToDelete] = useState<OnePagerEntity | null>(null);
+  const [shareModalOpen, setShareModalOpen] = useState(false);
+  const [selectedOnePagerForShare, setSelectedOnePagerForShare] = useState<OnePagerEntity | null>(null);
 
   const ownerUserId = user ? `USER#${user.userId}` : undefined;
 
@@ -59,41 +62,41 @@ function DashboardContent() {
   const publishedOnePagers = useMemo(() => allOnePagers.filter((p) => p.status === 'PUBLISHED'), [allOnePagers]);
   const draftOnePagers = useMemo(() => allOnePagers.filter((p) => p.status === 'DRAFT'), [allOnePagers]);
 
-  const copyToClipboard = async (url: string) => {
-    try {
-      await navigator.clipboard.writeText(url);
-      toast.success('Link copied!', {
-        description: 'The public link has been copied to your clipboard.',
-      });
-    } catch (err) {
-      toast.error('Failed to copy', {
-        description: 'Please try copying the link manually.',
-      });
-    }
-  };
-
-  const openInNewTab = (url: string) => {
-    window.open(url, '_blank', 'noopener,noreferrer');
-  };
-
-  const getPublicUrl = (slug?: string | null) => {
-    if (!slug) return '';
-    // Ensure window is defined (for SSR safety, though this is a client component)
-    return typeof window !== 'undefined' ? `${window.location.origin}/${slug}` : `/${slug}`;
-  };
-
   // Use TanStack Query hooks for mutations
   const deleteOnePagerMutation = useDeleteOnePager();
   const publishDraftMutation = usePublishDraft();
+  const updateOnePagerMutation = useUpdateOnePager();
 
-  const handleDelete = (pk: string) => {
-    setOnePagerToDelete(pk);
+  const handleDelete = (pager: OnePagerEntity) => {
+    setOnePagerToDelete(pager);
     setIsDeleteDialogOpen(true);
   };
 
   const confirmDelete = () => {
-    if (onePagerToDelete) {
-      deleteOnePagerMutation.mutate(onePagerToDelete);
+    if (onePagerToDelete?.PK) {
+      deleteOnePagerMutation.mutate(onePagerToDelete.PK);
+    }
+    setIsDeleteDialogOpen(false);
+    setOnePagerToDelete(null);
+  };
+
+  const handleUnpublish = () => {
+    if (onePagerToDelete?.PK && onePagerToDelete?.contentBlocks) {
+      // Parse the content blocks and update status to DRAFT
+      const contentBlocks = JSON.parse(onePagerToDelete.contentBlocks);
+      updateOnePagerMutation.mutate(
+        {
+          PK: onePagerToDelete.PK,
+          internalTitle: onePagerToDelete.internalTitle || 'Untitled Page',
+          status: 'DRAFT',
+          contentBlocks,
+        },
+        {
+          onSuccess: () => {
+            setActiveTab('draft'); // Switch to draft tab to show the unpublished page
+          },
+        }
+      );
     }
     setIsDeleteDialogOpen(false);
     setOnePagerToDelete(null);
@@ -105,6 +108,11 @@ function DashboardContent() {
         setActiveTab('published'); // Switch to published tab
       },
     });
+  };
+
+  const handleOpenShareModal = (pager: OnePagerEntity) => {
+    setSelectedOnePagerForShare(pager);
+    setShareModalOpen(true);
   };
 
   // Don't show a separate loading state - let the content render with loading indicators inline
@@ -162,13 +170,11 @@ function DashboardContent() {
                     <TableRow>
                       <TableHead>Title</TableHead>
                       <TableHead className="hidden md:table-cell">Published</TableHead>
-                      <TableHead>Public Link</TableHead>
                       <TableHead className="w-[100px] text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {publishedOnePagers.map((pager) => {
-                      const publicUrl = getPublicUrl(pager.publicSlug);
                       return (
                         <TableRow key={pager.PK}>
                           <TableCell className="font-medium">
@@ -178,33 +184,6 @@ function DashboardContent() {
                           </TableCell>
                           <TableCell className="text-muted-foreground hidden md:table-cell">
                             {pager.statusUpdatedAt ? new Date(pager.statusUpdatedAt).toLocaleDateString() : 'N/A'}
-                          </TableCell>
-                          <TableCell>
-                            {pager.publicSlug && publicUrl ? (
-                              <div className="flex items-center gap-1 max-w-[200px] sm:max-w-xs">
-                                <Link
-                                  href={publicUrl}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="text-blue-600 hover:text-blue-800 hover:underline truncate flex-1 text-sm"
-                                  title={publicUrl}
-                                >
-                                  {publicUrl.replace(/^https?:\/\//, '')}
-                                </Link>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-7 w-7 shrink-0"
-                                  onClick={() => copyToClipboard(publicUrl)}
-                                  title="Copy link"
-                                >
-                                  <Copy className="h-3.5 w-3.5" />
-                                  <span className="sr-only">Copy link</span>
-                                </Button>
-                              </div>
-                            ) : (
-                              <span className="text-xs text-muted-foreground">No public link</span>
-                            )}
                           </TableCell>
                           <TableCell className="text-right">
                             <DropdownMenu>
@@ -220,18 +199,15 @@ function DashboardContent() {
                                     <Edit className="h-4 w-4 mr-2" /> Edit
                                   </Link>
                                 </DropdownMenuItem>
-                                {publicUrl && (
-                                  <DropdownMenuItem
-                                    onClick={() => openInNewTab(publicUrl)}
-                                    className="flex items-center"
-                                  >
-                                    <ExternalLink className="h-4 w-4 mr-2" /> Open Public Page
-                                  </DropdownMenuItem>
-                                )}
-                                {/* <DropdownMenuItem className="flex items-center"><Share2 className="h-4 w-4 mr-2" /> Manage Shares</DropdownMenuItem> */}
+                                <DropdownMenuItem
+                                  onClick={() => handleOpenShareModal(pager)}
+                                  className="flex items-center"
+                                >
+                                  <Share2 className="h-4 w-4 mr-2" /> Manage Shares
+                                </DropdownMenuItem>
                                 <DropdownMenuSeparator />
                                 <DropdownMenuItem
-                                  onClick={() => handleDelete(pager.PK)}
+                                  onClick={() => handleDelete(pager)}
                                   className="text-red-600 dark:text-red-500 flex items-center"
                                 >
                                   <Trash2 className="h-4 w-4 mr-2" /> Delete
@@ -306,7 +282,7 @@ function DashboardContent() {
                               </DropdownMenuItem>
                               <DropdownMenuSeparator />
                               <DropdownMenuItem
-                                onClick={() => handleDelete(pager.PK)}
+                                onClick={() => handleDelete(pager)}
                                 className="text-red-600 dark:text-red-500 flex items-center"
                               >
                                 <Trash2 className="h-4 w-4 mr-2" /> Delete
@@ -325,19 +301,66 @@ function DashboardContent() {
       </Tabs>
 
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-        <AlertDialogContent>
+        <AlertDialogContent className="max-w-lg">
           <AlertDialogHeader>
-            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete the page and all associated data.
+            <AlertDialogTitle>Delete or Unpublish Page?</AlertDialogTitle>
+            <AlertDialogDescription className="space-y-4">
+              <div>
+                Deleting this page will permanently delete the page and all shared links. Your recipients will no longer
+                have access to the page <strong>This action cannot be undone.</strong>
+              </div>
+
+              <div>
+                Alternatively, you can unpublish the page to temporarily disable all shared links. They will be
+                reactivated once you publish the page again.
+              </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setOnePagerToDelete(null)}>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDelete}>Confirm Delete</AlertDialogAction>
+          <AlertDialogFooter className="flex-col sm:flex-row gap-2">
+            <AlertDialogCancel onClick={() => setOnePagerToDelete(null)} className="order-3 sm:order-1">
+              Cancel
+            </AlertDialogCancel>
+            <Button
+              variant="default"
+              onClick={handleUnpublish}
+              className="order-2"
+              disabled={updateOnePagerMutation.isPending}
+            >
+              {updateOnePagerMutation.isPending ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Unpublishing...
+                </>
+              ) : (
+                'Unpublish'
+              )}
+            </Button>
+            <AlertDialogAction
+              onClick={confirmDelete}
+              className="order-1 sm:order-3 bg-red-600 hover:bg-red-700"
+              disabled={deleteOnePagerMutation.isPending}
+            >
+              {deleteOnePagerMutation.isPending ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                'Delete Permanently'
+              )}
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <ShareModal
+        onePager={selectedOnePagerForShare}
+        isOpen={shareModalOpen}
+        onClose={() => {
+          setShareModalOpen(false);
+          setSelectedOnePagerForShare(null);
+        }}
+      />
     </div>
   );
 }

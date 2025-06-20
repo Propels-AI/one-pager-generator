@@ -1,7 +1,6 @@
 export * from './callToActionItem';
 export * from './faqItem';
 export * from './featureItem';
-export * from './pricingItem';
 export * from './problemSectionItem';
 export * from './solutionItem';
 export * from './socialItem';

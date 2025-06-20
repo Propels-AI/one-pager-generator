@@ -22,27 +22,14 @@ interface TeamMember {
 }
 
 interface TeamSectionDisplayProps {
-  mainHeading: string;
-  subHeading: string;
-  descriptionParagraph: string;
   teamMembers: TeamMember[];
 }
 
-// Display Component (adapted from user's Team2)
-const TeamSectionDisplay: React.FC<TeamSectionDisplayProps> = ({
-  mainHeading,
-  subHeading,
-  descriptionParagraph,
-  teamMembers,
-}) => {
+// Display Component - Pure Team Grid (no internal headings)
+const TeamSectionDisplay: React.FC<TeamSectionDisplayProps> = ({ teamMembers }) => {
   return (
     <BlockContainer>
-      <div className="container flex flex-col items-start text-left px-4 mx-auto">
-        <p className="font-semibold text-primary">{mainHeading}</p>
-        <h2 className="my-4 text-3xl font-bold md:text-4xl lg:text-5xl text-pretty">{subHeading}</h2>
-        <p className="mb-8 max-w-3xl text-muted-foreground lg:text-xl">{descriptionParagraph}</p>
-      </div>
-      <div className="container mt-12 grid gap-x-8 gap-y-12 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 px-4 mx-auto">
+      <div className="container grid gap-x-8 gap-y-12 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 px-4 mx-auto">
         {teamMembers.map((person) => (
           <div key={person.id} className="flex flex-col items-start">
             <Avatar className="mb-4 size-20 md:mb-5 lg:size-24">
@@ -59,7 +46,7 @@ const TeamSectionDisplay: React.FC<TeamSectionDisplayProps> = ({
   );
 };
 
-// Default team members data from user's example
+// Default team members data
 const defaultPeople: TeamMember[] = [
   {
     id: 'person-1',
@@ -91,21 +78,15 @@ const defaultPeople: TeamMember[] = [
   },
 ];
 
-// BlockNote Prop Schema
+// Simplified BlockNote Props - Only team members
 const teamPropsDefinition = {
-  mainHeading: { default: 'Our Team' as string },
-  subHeading: { default: "The A-Players You'll Be Working With" as string },
-  descriptionParagraph: {
-    default:
-      'Meet the dedicated professionals who will bring your project to life with expertise and passion.' as string,
-  },
   teamMembers: { default: JSON.stringify(defaultPeople) as string },
 };
 
 // BlockNote Block Configuration
 export const teamBlockConfig = {
   type: 'team' as const,
-  name: 'Team Section',
+  name: 'Team Grid',
   content: 'none' as const,
   propSchema: teamPropsDefinition,
   icon: Users,
@@ -115,16 +96,9 @@ export const teamBlockConfig = {
 export const TeamBlockSpec = createReactBlockSpec(teamBlockConfig, {
   render: ({ block, editor }) => {
     const [isEditing, setIsEditing] = useState(false);
-
-    const [currentMainHeading, setCurrentMainHeading] = useState(block.props.mainHeading);
-    const [currentSubHeading, setCurrentSubHeading] = useState(block.props.subHeading);
-    const [currentDescriptionParagraph, setCurrentDescriptionParagraph] = useState(block.props.descriptionParagraph);
     const [currentTeamMembers, setCurrentTeamMembers] = useState<TeamMember[]>([]);
 
     useEffect(() => {
-      setCurrentMainHeading(block.props.mainHeading);
-      setCurrentSubHeading(block.props.subHeading);
-      setCurrentDescriptionParagraph(block.props.descriptionParagraph);
       try {
         setCurrentTeamMembers(JSON.parse(block.props.teamMembers));
       } catch (e) {
@@ -159,9 +133,6 @@ export const TeamBlockSpec = createReactBlockSpec(teamBlockConfig, {
     const handleSave = () => {
       editor.updateBlock(block, {
         props: {
-          mainHeading: currentMainHeading,
-          subHeading: currentSubHeading,
-          descriptionParagraph: currentDescriptionParagraph,
           teamMembers: JSON.stringify(currentTeamMembers),
         },
       });
@@ -177,21 +148,13 @@ export const TeamBlockSpec = createReactBlockSpec(teamBlockConfig, {
 
     return (
       <div className="relative group w-full">
-        <TeamSectionDisplay
-          mainHeading={block.props.mainHeading}
-          subHeading={block.props.subHeading}
-          descriptionParagraph={block.props.descriptionParagraph}
-          teamMembers={parsedTeamMembers}
-        />
+        <TeamSectionDisplay teamMembers={parsedTeamMembers} />
         {editor.isEditable && (
           <EditBlockPopover
             isOpen={isEditing}
             onOpenChange={(open: boolean) => {
               setIsEditing(open);
               if (open) {
-                setCurrentMainHeading(block.props.mainHeading);
-                setCurrentSubHeading(block.props.subHeading);
-                setCurrentDescriptionParagraph(block.props.descriptionParagraph);
                 try {
                   setCurrentTeamMembers(JSON.parse(block.props.teamMembers));
                 } catch (e) {
@@ -202,33 +165,6 @@ export const TeamBlockSpec = createReactBlockSpec(teamBlockConfig, {
             onSave={handleSave}
             width="lg"
           >
-            <FormField>
-              <Label htmlFor="teamMainHeading">Main Heading</Label>
-              <Input
-                id="teamMainHeading"
-                value={currentMainHeading}
-                onChange={(e) => setCurrentMainHeading(e.target.value)}
-              />
-            </FormField>
-
-            <FormField>
-              <Label htmlFor="teamSubHeading">Subheading</Label>
-              <Input
-                id="teamSubHeading"
-                value={currentSubHeading}
-                onChange={(e) => setCurrentSubHeading(e.target.value)}
-              />
-            </FormField>
-
-            <FormField>
-              <Label htmlFor="teamDesc">Description Paragraph</Label>
-              <Textarea
-                id="teamDesc"
-                value={currentDescriptionParagraph}
-                onChange={(e) => setCurrentDescriptionParagraph(e.target.value)}
-              />
-            </FormField>
-
             <FormSection title="Team Members">
               {currentTeamMembers.map((member, index) => (
                 <ItemCard key={member.id} onRemove={() => removeMember(member.id)}>

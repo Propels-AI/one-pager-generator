@@ -2,12 +2,16 @@
 
 import React, { useState, useEffect } from 'react';
 import { createReactBlockSpec } from '@blocknote/react';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Trash2, Pencil, PlusCircle } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { CalendarIcon } from 'lucide-react';
+import { format } from 'date-fns';
+import { cn } from '@/lib/utils';
+import { EditBlockPopover, FormField, FormSection } from '../EditBlockPopover';
 import { BlockContainer } from '../BlockContainer';
 
 // Interface for individual timeline events
@@ -18,7 +22,7 @@ interface TimelineEvent {
   description: string;
 }
 
-// Default timeline data based on the new example
+// Default timeline data - fixed at 4 phases
 const defaultTimelineEvents: TimelineEvent[] = [
   {
     id: crypto.randomUUID(),
@@ -46,17 +50,68 @@ const defaultTimelineEvents: TimelineEvent[] = [
   },
 ];
 
-// Props definition for the Timeline block
+// Date picker component
+const DatePicker = ({
+  value,
+  onChange,
+  placeholder,
+}: {
+  value: string;
+  onChange: (date: string) => void;
+  placeholder?: string;
+}) => {
+  const [date, setDate] = useState<Date | undefined>();
+  const [isOpen, setIsOpen] = useState(false);
+
+  useEffect(() => {
+    if (value) {
+      const parsedDate = new Date(value);
+      if (!isNaN(parsedDate.getTime())) {
+        setDate(parsedDate);
+      }
+    }
+  }, [value]);
+
+  const handleSelect = (selectedDate: Date | undefined) => {
+    if (selectedDate) {
+      setDate(selectedDate);
+      onChange(format(selectedDate, 'MMMM dd, yyyy'));
+      setIsOpen(false);
+    }
+  };
+
+  return (
+    <Popover open={isOpen} onOpenChange={setIsOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          variant="outline"
+          className={cn('w-full justify-start text-left font-normal', !date && 'text-muted-foreground')}
+        >
+          <CalendarIcon className="mr-2 h-4 w-4" />
+          {date ? format(date, 'MMMM dd, yyyy') : <span>{placeholder || 'Pick a date'}</span>}
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-auto p-0" align="start">
+        <Calendar
+          mode="single"
+          selected={date}
+          onSelect={handleSelect}
+          initialFocus
+          captionLayout="dropdown"
+          fromYear={2000}
+          toYear={2050}
+        />
+      </PopoverContent>
+    </Popover>
+  );
+};
+
 export const timelinePropsDefinition = {
-  mainHeading: {
-    default: 'Timeline' as string,
-  },
   events: {
     default: JSON.stringify(defaultTimelineEvents) as string,
   },
 };
 
-// The Timeline Block
 export const TimelineBlockSpec = createReactBlockSpec(
   {
     type: 'timeline' as const,
@@ -66,47 +121,40 @@ export const TimelineBlockSpec = createReactBlockSpec(
   {
     render: ({ block, editor }) => {
       const [isEditing, setIsEditing] = useState(false);
-      const [currentHeading, setCurrentHeading] = useState(block.props.mainHeading);
       const [currentEvents, setCurrentEvents] = useState<TimelineEvent[]>(() => {
         try {
           const parsed = JSON.parse(block.props.events);
-          return Array.isArray(parsed) ? parsed : defaultTimelineEvents;
+          // Ensure we always have exactly 4 events
+          if (Array.isArray(parsed) && parsed.length === 4) {
+            return parsed;
+          }
+          return defaultTimelineEvents;
         } catch {
           return defaultTimelineEvents;
         }
       });
 
       useEffect(() => {
-        setCurrentHeading(block.props.mainHeading);
         try {
           const parsedEvents = JSON.parse(block.props.events);
-          setCurrentEvents(Array.isArray(parsedEvents) ? parsedEvents : defaultTimelineEvents);
+          // Ensure we always have exactly 4 events
+          if (Array.isArray(parsedEvents) && parsedEvents.length === 4) {
+            setCurrentEvents(parsedEvents);
+          } else {
+            setCurrentEvents(defaultTimelineEvents);
+          }
         } catch (e) {
           setCurrentEvents(defaultTimelineEvents);
         }
-      }, [block.props.mainHeading, block.props.events]);
+      }, [block.props.events]);
 
       const handleSave = () => {
         editor.updateBlock(block, {
           props: {
-            ...block.props,
-            mainHeading: currentHeading,
             events: JSON.stringify(currentEvents),
           },
         });
         setIsEditing(false);
-      };
-
-      const addEvent = () => {
-        setCurrentEvents([
-          ...currentEvents,
-          {
-            id: crypto.randomUUID(),
-            phase: 'New Phase',
-            date: 'New Date',
-            description: 'New description.',
-          },
-        ]);
       };
 
       const updateEvent = (index: number, field: keyof TimelineEvent, value: string) => {
@@ -115,20 +163,12 @@ export const TimelineBlockSpec = createReactBlockSpec(
         setCurrentEvents(updatedEvents);
       };
 
-      const removeEvent = (id: string) => {
-        setCurrentEvents(currentEvents.filter((event) => event.id !== id));
-      };
-
       const displayedEvents: TimelineEvent[] = JSON.parse(block.props.events);
 
       return (
         <div className="relative group w-full">
           <BlockContainer blockType="timeline">
             <div className="max-w-6xl mx-auto px-4">
-              <div className="text-center mb-16">
-                <h1 className="text-5xl font-bold text-black mb-2">{block.props.mainHeading}</h1>
-              </div>
-
               {/* Desktop Timeline */}
               <div className="hidden md:block">
                 <div className="relative">
@@ -169,74 +209,69 @@ export const TimelineBlockSpec = createReactBlockSpec(
             </div>
           </BlockContainer>
 
-          {/* Edit Popover Trigger */}
-          <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
-            <Popover open={isEditing} onOpenChange={setIsEditing}>
-              <PopoverTrigger asChild>
-                <Button variant="outline" size="icon" className="rounded-full bg-white hover:bg-gray-100">
-                  <Pencil size={16} />
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-96 max-h-[80vh] overflow-y-auto p-4">
-                <div className="space-y-4">
-                  <div>
-                    <Label htmlFor="timelineHeading">Main Heading</Label>
-                    <Input
-                      id="timelineHeading"
-                      value={currentHeading}
-                      onChange={(e) => setCurrentHeading(e.target.value)}
-                    />
-                  </div>
-
-                  <h4 className="text-md font-semibold mt-4 mb-2 border-b pb-2">Timeline Events</h4>
-                  {currentEvents.map((event, index) => (
-                    <div key={event.id} className="p-3 border rounded-md space-y-2 relative bg-gray-50">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="absolute top-1 right-1 w-6 h-6 text-red-500"
-                        onClick={() => removeEvent(event.id)}
-                      >
-                        <Trash2 size={14} />
-                      </Button>
-                      <div>
-                        <Label htmlFor={`eventPhase-${event.id}`}>Phase</Label>
+          {editor.isEditable && (
+            <EditBlockPopover
+              isOpen={isEditing}
+              onOpenChange={(open: boolean) => {
+                setIsEditing(open);
+                if (open) {
+                  try {
+                    const parsedEvents = JSON.parse(block.props.events);
+                    if (Array.isArray(parsedEvents) && parsedEvents.length === 4) {
+                      setCurrentEvents(parsedEvents);
+                    } else {
+                      setCurrentEvents(defaultTimelineEvents);
+                    }
+                  } catch (e) {
+                    setCurrentEvents(defaultTimelineEvents);
+                  }
+                }
+              }}
+              onSave={handleSave}
+              width="lg"
+            >
+              <FormSection title="Timeline Events (4 Phases)">
+                {currentEvents.map((event, index) => (
+                  <div key={event.id} className="border border-border rounded-lg p-4 space-y-3">
+                    <div className="flex justify-between items-start">
+                      <span className="text-sm font-medium text-muted-foreground">
+                        {event.phase} - Event {index + 1}
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <FormField>
+                        <Label htmlFor={`eventPhase-${event.id}`}>Phase Name</Label>
                         <Input
                           id={`eventPhase-${event.id}`}
                           value={event.phase}
                           onChange={(e) => updateEvent(index, 'phase', e.target.value)}
+                          placeholder="Phase name"
                         />
-                      </div>
-                      <div>
+                      </FormField>
+                      <FormField>
                         <Label htmlFor={`eventDate-${event.id}`}>Date</Label>
-                        <Input
-                          id={`eventDate-${event.id}`}
+                        <DatePicker
                           value={event.date}
-                          onChange={(e) => updateEvent(index, 'date', e.target.value)}
+                          onChange={(date) => updateEvent(index, 'date', date)}
+                          placeholder="Select event date"
                         />
-                      </div>
-                      <div>
-                        <Label htmlFor={`eventDesc-${event.id}`}>Description</Label>
-                        <Textarea
-                          id={`eventDesc-${event.id}`}
-                          value={event.description}
-                          onChange={(e) => updateEvent(index, 'description', e.target.value)}
-                          rows={3}
-                        />
-                      </div>
+                      </FormField>
                     </div>
-                  ))}
-                  <Button variant="outline" onClick={addEvent} className="w-full mt-2">
-                    <PlusCircle size={16} className="mr-2" /> Add Event
-                  </Button>
-
-                  <Button onClick={handleSave} className="w-full mt-4">
-                    Save Changes
-                  </Button>
-                </div>
-              </PopoverContent>
-            </Popover>
-          </div>
+                    <FormField>
+                      <Label htmlFor={`eventDesc-${event.id}`}>Description</Label>
+                      <Textarea
+                        id={`eventDesc-${event.id}`}
+                        value={event.description}
+                        onChange={(e) => updateEvent(index, 'description', e.target.value)}
+                        placeholder="Event description"
+                        className="min-h-[80px]"
+                      />
+                    </FormField>
+                  </div>
+                ))}
+              </FormSection>
+            </EditBlockPopover>
+          )}
         </div>
       );
     },

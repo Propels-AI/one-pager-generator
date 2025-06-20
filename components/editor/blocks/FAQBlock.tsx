@@ -68,9 +68,6 @@ const getEffectiveTextColor = (
 };
 
 const faqPropsDefinition = {
-  heading: {
-    default: 'Frequently Asked Questions',
-  },
   items: {
     default: JSON.stringify([
       {
@@ -95,14 +92,11 @@ const faqPropsDefinition = {
   backgroundColor: {
     default: '#FFFFFF',
   },
-  headingTextColor: {
-    default: '#1E1E1E',
-  },
 };
 
 export const faqBlockConfig = {
   type: 'faq' as const,
-  name: 'FAQ Section',
+  name: 'FAQ List',
   content: 'none' as const,
   propSchema: faqPropsDefinition,
   icon: HelpCircle,
@@ -110,7 +104,6 @@ export const faqBlockConfig = {
 
 export const FaqBlockSpec = createReactBlockSpec(faqBlockConfig, {
   render: ({ block, editor }) => {
-    const initialHeading = block.props.heading;
     let initialItems: FaqItemDefinition[] = [];
     try {
       initialItems = JSON.parse(block.props.items);
@@ -119,18 +112,13 @@ export const FaqBlockSpec = createReactBlockSpec(faqBlockConfig, {
     }
 
     const [isEditing, setIsEditing] = useState(false);
-    const [currentHeading, setCurrentHeading] = useState(initialHeading);
     const [currentItems, setCurrentItems] = useState<FaqItemDefinition[]>(initialItems);
     const [currentBackgroundColor, setCurrentBackgroundColor] = useState(
       block.props.backgroundColor || faqPropsDefinition.backgroundColor.default
     );
-    const [currentHeadingTextColor, setCurrentHeadingTextColor] = useState(
-      block.props.headingTextColor || faqPropsDefinition.headingTextColor.default
-    );
 
     // Effect to update local state if props change from outside (e.g., collab, undo/redo)
     useEffect(() => {
-      setCurrentHeading(block.props.heading);
       try {
         setCurrentItems(JSON.parse(block.props.items));
       } catch (e) {
@@ -138,16 +126,7 @@ export const FaqBlockSpec = createReactBlockSpec(faqBlockConfig, {
         console.error('Failed to parse FAQ items from props in useEffect', e);
       }
       setCurrentBackgroundColor(block.props.backgroundColor || faqPropsDefinition.backgroundColor.default);
-      setCurrentHeadingTextColor(block.props.headingTextColor || faqPropsDefinition.headingTextColor.default);
-    }, [block.props.heading, block.props.items, block.props.backgroundColor, block.props.headingTextColor]);
-
-    // Effect to sync local editing state to component display state when not editing
-    // This ensures the static display updates immediately after closing the popover
-    useEffect(() => {
-      if (!isEditing) {
-        // This part is for display only, so it uses the direct props for rendering staticContent
-      }
-    }, [isEditing, block.props.heading, block.props.items]);
+    }, [block.props.items, block.props.backgroundColor]);
 
     const handleItemChange = (index: number, field: keyof Omit<FaqItemDefinition, 'id'>, value: string) => {
       const updatedItems = [...currentItems];
@@ -163,7 +142,16 @@ export const FaqBlockSpec = createReactBlockSpec(faqBlockConfig, {
       setCurrentItems(currentItems.filter((item) => item.id !== idToRemove));
     };
 
-    const effectiveHeadingColor = getEffectiveTextColor(block.props.backgroundColor, block.props.headingTextColor);
+    const handleSave = () => {
+      editor.updateBlock(block, {
+        props: {
+          items: JSON.stringify(currentItems),
+          backgroundColor: currentBackgroundColor,
+        },
+      });
+      setIsEditing(false);
+    };
+
     const currentBlockBackgroundColor = block.props.backgroundColor || faqPropsDefinition.backgroundColor.default;
 
     return (
@@ -174,12 +162,6 @@ export const FaqBlockSpec = createReactBlockSpec(faqBlockConfig, {
           }}
         >
           <BlockContainer blockType="faq">
-            <h2
-              className="mb-4 text-4xl font-semibold md:mb-8 md:text-5xl px-4"
-              style={{ color: effectiveHeadingColor }}
-            >
-              {block.props.heading}
-            </h2>
             {(JSON.parse(block.props.items) as FaqItemDefinition[]).length > 0 ? (
               <Accordion type="single" collapsible className="w-full px-4">
                 {(JSON.parse(block.props.items) as FaqItemDefinition[]).map((item) => (
@@ -198,21 +180,7 @@ export const FaqBlockSpec = createReactBlockSpec(faqBlockConfig, {
         </div>
 
         {editor.isEditable && (
-          <Popover
-            open={isEditing}
-            onOpenChange={(open) => {
-              setIsEditing(open);
-              if (open) {
-                // When opening popover, sync local state with block props
-                setCurrentHeading(block.props.heading);
-                try {
-                  setCurrentItems(JSON.parse(block.props.items));
-                } catch (e) {
-                  setCurrentItems([]);
-                }
-              }
-            }}
-          >
+          <Popover open={isEditing} onOpenChange={setIsEditing}>
             <PopoverTrigger asChild>
               <Button
                 variant="outline"
@@ -222,91 +190,74 @@ export const FaqBlockSpec = createReactBlockSpec(faqBlockConfig, {
                 <Pencil className="h-4 w-4" />
               </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-[500px] p-4" side="bottom" align="center">
-              <div className="space-y-6 max-h-[70vh] overflow-y-auto pr-2">
+            <PopoverContent
+              className="w-[95vw] sm:w-[600px] md:w-[700px] lg:w-[800px] max-h-[70vh] overflow-y-auto p-4 space-y-4"
+              side="top"
+              align="end"
+            >
+              <div className="flex justify-between items-center">
+                <h3 className="text-lg font-semibold">Edit FAQ List</h3>
+                <Button onClick={handleSave} className="flex-shrink-0">
+                  Save Changes
+                </Button>
+              </div>
+
+              <div className="space-y-4">
                 <div>
-                  <h4 className="font-medium leading-none mb-4">Edit Heading</h4>
-                  <div className="grid gap-2">
-                    <Label htmlFor="faqHeading">Heading Text</Label>
-                    <Input id="faqHeading" value={currentHeading} onChange={(e) => setCurrentHeading(e.target.value)} />
-                  </div>
-                  <div className="grid grid-cols-2 gap-4 mt-4">
-                    <div className="grid gap-2">
-                      <Label htmlFor="faqBgColor">Background Color</Label>
-                      <Input
-                        id="faqBgColor"
-                        type="color"
-                        value={currentBackgroundColor}
-                        onChange={(e) => setCurrentBackgroundColor(e.target.value)}
-                      />
-                    </div>
-                    <div className="grid gap-2">
-                      <Label htmlFor="faqHeadingTextColor">Heading Text Color</Label>
-                      <Input
-                        id="faqHeadingTextColor"
-                        type="color"
-                        value={currentHeadingTextColor}
-                        onChange={(e) => setCurrentHeadingTextColor(e.target.value)}
-                      />
-                    </div>
-                  </div>
+                  <Label htmlFor="bgColor">Background Color</Label>
+                  <Input
+                    id="bgColor"
+                    type="color"
+                    value={currentBackgroundColor}
+                    onChange={(e) => setCurrentBackgroundColor(e.target.value)}
+                    className="h-10"
+                  />
                 </div>
 
-                <div className="border-t pt-6">
-                  <h4 className="font-medium leading-none mb-4">Edit FAQ Items</h4>
-                  <div className="space-y-4">
+                <div>
+                  <Label>FAQ Items</Label>
+                  <div className="space-y-4 mt-2">
                     {currentItems.map((item, index) => (
-                      <div key={item.id} className="p-4 border rounded-md space-y-3 relative">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="absolute top-2 right-2 h-7 w-7 text-black"
-                          onClick={() => removeItem(item.id)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                        <div className="grid gap-2">
-                          <Label htmlFor={`faqQuestion-${item.id}`}>Question</Label>
-                          <Input
-                            id={`faqQuestion-${item.id}`}
-                            value={item.question}
-                            onChange={(e) => handleItemChange(index, 'question', e.target.value)}
-                          />
+                      <div key={item.id} className="border border-border rounded-lg p-4 space-y-3">
+                        <div className="flex justify-between items-start">
+                          <span className="text-sm font-medium text-muted-foreground">FAQ Item {index + 1}</span>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => removeItem(item.id)}
+                            className="text-destructive hover:text-destructive h-6 w-6 p-0"
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
                         </div>
-                        <div className="grid gap-2">
-                          <Label htmlFor={`faqAnswer-${item.id}`}>Answer</Label>
-                          <Textarea
-                            id={`faqAnswer-${item.id}`}
-                            value={item.answer}
-                            onChange={(e) => handleItemChange(index, 'answer', e.target.value)}
-                            className="min-h-[80px]"
-                          />
+                        <div className="space-y-2">
+                          <div>
+                            <Label htmlFor={`question-${item.id}`}>Question</Label>
+                            <Input
+                              id={`question-${item.id}`}
+                              value={item.question}
+                              onChange={(e) => handleItemChange(index, 'question', e.target.value)}
+                              placeholder="Enter question..."
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor={`answer-${item.id}`}>Answer</Label>
+                            <Textarea
+                              id={`answer-${item.id}`}
+                              value={item.answer}
+                              onChange={(e) => handleItemChange(index, 'answer', e.target.value)}
+                              placeholder="Enter answer..."
+                              className="min-h-[80px]"
+                            />
+                          </div>
                         </div>
                       </div>
                     ))}
+                    <Button variant="outline" onClick={addItem} className="w-full">
+                      Add FAQ Item
+                    </Button>
                   </div>
-                  <Button variant="outline" className="mt-4 w-full" onClick={addItem}>
-                    Add FAQ Item
-                  </Button>
                 </div>
-
-                <div className="my-4 border-t"></div>
-                <Button
-                  onClick={() => {
-                    editor.updateBlock(block, {
-                      props: {
-                        heading: currentHeading,
-                        items: JSON.stringify(currentItems),
-                        backgroundColor: currentBackgroundColor,
-                        headingTextColor: currentHeadingTextColor,
-                      },
-                    });
-                    setIsEditing(false);
-                  }}
-                  className="w-full"
-                >
-                  Save
-                </Button>
               </div>
             </PopoverContent>
           </Popover>

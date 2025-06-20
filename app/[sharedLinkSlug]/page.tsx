@@ -13,19 +13,11 @@ const client = generateServerClientUsingCookies<Schema>({
 
 type PageParams = { sharedLinkSlug: string };
 type PublicOnePagerPageProps = {
-  params: PageParams | Promise<PageParams>;
+  params: Promise<PageParams>;
 };
 
-export default async function PublicOnePagerPage({ params: paramsInput }: PublicOnePagerPageProps) {
-  let resolvedParams: PageParams;
-  if (paramsInput && typeof (paramsInput as any).then === 'function') {
-    resolvedParams = await paramsInput; // paramsInput is a Promise, await it
-  } else if (paramsInput) {
-    resolvedParams = paramsInput as PageParams;
-  } else {
-    notFound();
-    return null;
-  }
+export default async function PublicOnePagerPage({ params }: PublicOnePagerPageProps) {
+  const resolvedParams = await params;
 
   if (typeof resolvedParams.sharedLinkSlug !== 'string') {
     console.error(
